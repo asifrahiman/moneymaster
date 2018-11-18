@@ -7,7 +7,7 @@ require 'config.php';
 	
 	$sql="SELECT `type` AS Type ,SUM(amount) AS Amount FROM `expenses` ";
 	$sql1="SELECT SUM(amount) AS Total FROM `expenses` ";
-	$sql2="SELECT `type` AS Type ,amount AS Amount FROM `expenses` ";
+	$sql2="SELECT `type` AS Type ,amount AS Amount, date AS Date FROM `expenses` ";
 	$params="WHERE `user` = '$user' ";
 	function mysqli_field_name($result, $field_offset)
 	{
@@ -79,7 +79,7 @@ require 'config.php';
 		}
 	print "\n\nDetailed Report:\n";
 	for ($i = 0; $i < mysqli_num_fields($result2); $i++) {
-	echo mysqli_field_name($result,$i) . "\t";
+	echo mysqli_field_name($result2,$i) . "\t";
 	}
 	print "\n";
 	while($row = mysqli_fetch_row($result2))
