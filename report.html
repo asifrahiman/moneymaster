@@ -63,7 +63,13 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		autoclose: true,  
 		format: "yyyy-mm-dd",
 	}).on('changeDate', function (ev) {$scope.maxdate = $("#to_date").val();$scope.$apply();});
-	
+	$scope.downloadreport = function () 
+	{
+        var data1=$scope.mindate;
+		var data2=$scope.maxdate;
+		var dataString = 'mindate='+ data1 + '&maxdate='+ data2;
+		window.location = 'download.php?'+dataString;
+	}
 });     
 app.filter('rangeFilter', function() {
     return function( items, filtext1, filtext2 ) {
@@ -190,7 +196,7 @@ app.filter('sumByKey', function() {
 	</br>
 	<div class = "container" >
 		<div id = "filter" class = "row">
-			<div class = "col-sm-4" ></div>
+			<div class = "col-sm-2" ></div>
 			<div class = "col-sm-2" ><div align = "right"><label>Filter By:</label></div></div>
 			<div  class ="col-sm-2" >
 				<input type="text" id="from_date"  placeholder="Select from date" ng-model="mindate">
@@ -203,6 +209,9 @@ app.filter('sumByKey', function() {
 			<div  class ="col-sm-1" align = "right">
 				<button class="btn btn-block btn-success" ng-click="reset()"> Clear </button>
 			</div>	
+			
+			<div class = "col-sm-2"  align = "left" ><button class="btn btn-block btn-success" style = "width: 100%" ng-click="downloadreport()"> Download </button></div>
+			
 			<div  class ="col-sm-1" >
 				<button onclick="window.location='index1.php';" class="btn btn-block btn-primary"> Back </button> 
 			</div>
