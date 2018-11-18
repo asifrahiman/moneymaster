@@ -24,7 +24,7 @@ require 'config.php';
 	$result2 = mysqli_query($con,$sql2.$params);
 	$file_ending = "xls";
 	date_default_timezone_set("Asia/Kolkata");
-	$filename="bandwidth_".date("d/m/Y h:i:sa");
+	$filename="moneymaster_".date("d/m/Y");
 	//header info for browser
 	header("Content-type: application/octet-stream");
 	header("Content-Disposition: attachment; filename=$filename.txt");  
@@ -81,6 +81,7 @@ require 'config.php';
 	for ($i = 0; $i < mysqli_num_fields($result2); $i++) {
 	echo mysqli_field_name($result,$i) . "\t";
 	}
+	print "\n";
 	while($row = mysqli_fetch_row($result2))
 		{
 			$schema_insert = "";
