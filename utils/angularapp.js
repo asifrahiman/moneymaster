@@ -136,15 +136,6 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		$scope.addiscredit=$scope.items[index].IsCredit==1&&true||false;
 		$("#input_date").datepicker('setDate', $scope.adddate);
     }
-	$scope.reset = function () {
-		$scope.mindate =null;
-		$scope.maxdate =null;
-		$scope.creditfilter ='';
-		$scope.filtercredit =false;
-		$scope.filtertype="";
-		$("#to_date").val("").datepicker("update");
-		$("#from_date").val("").datepicker("update");
-	}
 	$scope.creditfiltervalue = function () {
 		$scope.creditfilter=$scope.filtercredit==true&&1||0;
 	}
@@ -177,6 +168,15 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		autoclose: true,  
 		format: "yyyy-mm-dd",
 	}).on('changeDate', function (ev) {$scope.maxdate = $("#to_date").val();$scope.$apply();});
+	$scope.reset = function () {
+		$scope.mindate = d;
+		$scope.maxdate =null;
+		$scope.creditfilter ='';
+		$scope.filtercredit =false;
+		$scope.filtertype="";
+		$("#to_date").val("").datepicker("update");
+		$("#from_date").datepicker('setDate', d);
+	}
 	
 });     
 app.filter('rangeFilter', function() {
