@@ -139,9 +139,14 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 	$scope.reset = function () {
 		$scope.mindate =null;
 		$scope.maxdate =null;
+		$scope.creditfilter ='';
+		$scope.filtercredit =false;
 		$scope.filtertype="";
 		$("#to_date").val("").datepicker("update");
 		$("#from_date").val("").datepicker("update");
+	}
+	$scope.creditfiltervalue = function () {
+		$scope.creditfilter=$scope.filtercredit==true&&1||0;
 	}
 	
 	$scope.othersType=false;

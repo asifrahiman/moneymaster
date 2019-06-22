@@ -73,7 +73,7 @@ elseif(isset($_SESSION['user']))
 		</div>
 		</br>
 		<div id = "filter" class = "row">
-			<div class = "col-sm-3"></div>
+			<div class = "col-sm-2"></div>
 			<div class = "col-sm-1">
 				<button class="btn btn-info" onclick="window.location='report.php';"> Report </button>
 			</div>	
@@ -87,8 +87,12 @@ elseif(isset($_SESSION['user']))
 			<div  class ="col-sm-2" >
 				<input type="text" id="from_date"  placeholder="Select from date" ng-model="mindate">
 			</div>			
-			<div  class ="col-sm-2" >
+			<div  class ="col-sm-3" >
 				<input type="text" id="to_date"  placeholder="Select to date" ng-model="maxdate">
+				<label class="switch">
+				  <input type="checkbox" ng-change="creditfiltervalue()" ng-model="filtercredit">
+				  <span class="slider round"></span>
+				</label>
 			</div>			
 			<div  class ="col-sm-1" align = "right">
 				<button class="btn btn-block btn-success" ng-click="reset()"> Clear </button>
@@ -122,7 +126,7 @@ elseif(isset($_SESSION['user']))
 	</div>
 	<table style="background-color:#ffff">
 		<tr style="background-color:#595757;color:#ffff"><td>Type</td><td>Amount</td><td>Date</td><td>Delete</td></tr>
-		<tr dir-paginate="x in filtered =(items | orderBy:'-Date'| rangeFilter:mindate:maxdate| filter:{ Type: filtertype })|itemsPerPage:10" ng-class-even="'trcolour'" ng-class="{'redborder': x.IsCredit ==1}"><td style="max-width:30%"> {{x.Type}}</td><td>  {{x.Amount}} </td><td> {{x.Date}}</td><td><span ng-click="editItem(x)">edit</span> | <span ng-click="removeItem(x)">clear</span></td></tr>
+		<tr dir-paginate="x in filtered =(items | orderBy:'-Date'| rangeFilter:mindate:maxdate| filter:{ Type: filtertype}| filter:{ IsCredit: creditfilter })|itemsPerPage:10" ng-class-even="'trcolour'" ng-class="{'redborder': x.IsCredit ==1}"><td style="max-width:30%"> {{x.Type}}</td><td>  {{x.Amount}} </td><td> {{x.Date}}</td><td><span ng-click="editItem(x)">edit</span> | <span ng-click="removeItem(x)">clear</span></td></tr>
 	</table>
 </div>
 </body>
