@@ -1,0 +1,265 @@
+body {
+  margin: 0;
+  background-color: lightyellow;
+  height: 100%;
+}
+
+/* Include the padding and border in an element's total width and height */
+* {
+  box-sizing: border-box;
+}
+
+/* Remove margins and padding from the list */
+tr {
+  margin: 0;
+  padding: 0;
+}
+
+/* Style the list items */
+tr td{
+  cursor: pointer;
+  position: relative;
+  padding: 12px 8px 12px 40px;
+  list-style-type: none;
+  font-size: 18px;
+  transition: 0.2s;
+  /* make the list items unselectable */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+table{
+	width:100%;
+}
+/* Set all odd list items to a different color (zebra-stripes) */
+.trcolour {
+  background: #f2f2f2;
+}
+
+/* Darker background-color on hover */
+tr:hover {
+  background: #ddd;
+}
+
+/* When clicked on, add a background color and strike out text */
+tr td.checked {
+  background: #888;
+  color: #fff;
+  text-decoration: line-through;
+}
+
+/* Add a "checked" mark when clicked on */
+
+
+/* Style the close button */
+.close {
+  position: absolute;
+  right: 0;
+  top: 0;
+  padding: 12px 16px 12px 16px;
+}
+
+.close:hover {
+  background-color: #f44336;
+  color: white;
+}
+
+/* Style the header */
+.header {
+  background-color: #F5F6FA;
+  padding: 30px 40px;
+  color: grey;
+  text-align: center;
+  margin-top: -5%;
+  
+}
+/* Style the main header */
+.header1 {
+  background-color: #F5F6FA;
+  padding: 30px 40px;
+  color: grey;
+  text-align: left;
+  vertical-align:center-left;
+  
+}
+
+/* Clear floats after the header */
+.header:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Style the input */
+input {
+  border: none;
+  padding: 10px 5px;
+  font-size: 16px;
+}
+.searchinput {
+  border: none;
+  padding: 10px 5px;
+  float: center;
+  font-size: 16px;
+  margin: auto;
+  
+}
+
+/* Style the "Add" button */
+.addBtn {
+  color: white;
+  background-color:#4CAF50;
+  
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.nameBtn {
+  color: #4CAF50;
+  
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.addBtn:hover {
+  background-color: #bbb;
+}
+.typeBtn {
+  background: #d9d9d9;
+  color: #555;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.nameSel {
+  background: #d9d9d9;
+  color: #555;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.filtBtn {
+  background: #d9d9d9;
+  color: #555;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.dateBtn {
+  background: #d9d9d9;
+  color: #555;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+.logo {
+  width: 25%;
+  float:left
+}
+.semi-square {
+   -webkit-border-radius: 5px;
+   -moz-border-radius: 5px;
+   border-radius: 5px;
+}
+.styled-select {
+   
+   background-color:white;
+   overflow: hidden;
+   
+}
+.fixedlabel
+{position:fixed; bottom:2%; right:2%;background-color:grey;color:white;}
+
+.overlay {
+   background-color:#F5F6FA;
+	position: middle;
+	margin-top: 20%;
+}
+
+.backc{
+	background-color:#F5F6FA;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+  vertical-align: middle;
+}
+
+.switch input { 
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .slider {
+  background-color: #2196F3;
+}
+
+input:focus + .slider {
+  box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked + .slider:before {
+  -webkit-transform: translateX(26px);
+  -ms-transform: translateX(26px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.slider.round {
+  border-radius: 34px;
+}
+
+.slider.round:before {
+  border-radius: 50%;
+}
+.redborder{
+	border: 2px solid orange;
+}
+@media(min-width:992px){
+.title{margin-left: -87%;}
+}
+@media(max-width:500px){
+body{zoom: 70%;display:inline-block;}
+.logo {
+  width: 10%;
+}
+.switch{ 
+      margin-left: 5%;
+}
+}

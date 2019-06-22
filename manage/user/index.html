@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="To do list web app">
+<meta name="author" content="Asif Abdul Rahiman">
+<title>Moneymaster</title>
+<link rel="shortcut icon" href="../../utils/favicon.ico" type="image/x-icon">
+<link rel="icon" href="../../utils/favicon.ico" type="image/x-icon">
+<link rel="stylesheet" type="text/css" href="../../utils/mystyle.css">
+<link href="../../utils/bootstrap.min.css" rel="stylesheet">  
+<link href="../../utils/bootstrap-datepicker.css" rel="stylesheet">  
+<script src="../../utils/jquery.js"></script>  
+<script src="../../utils/bootstrap.min.js"></script>  
+<script src="../../utils/bootstrap-datepicker.js"></script> 
+<script src="../../utils/angular.min.js"></script>
+</head>
+
+<script>
+var app = angular.module("userlist", []); 
+app.controller("myCtrl", function($scope, $filter,$http) {
+    $scope.users = [];
+	 
+    $http({
+      method: 'GET',
+      url: 'get.php'
+   }).then(function (success){
+   
+	var _len = success.data.length;
+  var  post, i;
+
+  for (i = 0; i < _len; i++) {
+    //debugger
+    post = success.data[i];
+	$scope.users.push({'User':post.user});
+  }
+   },function (error){
+	alert(error);
+   });  
+    
+    $scope.addItem = function () {
+        $scope.errortext = "";
+		
+		
+        if (!$scope.adduser) {alert("Please fill all the details");return;} 
+		
+		var nuser={'User':$scope.adduser};
+		var newuser=true;
+		angular.forEach($scope.users, function(item) {
+			if( item.User.indexOf(nuser.User)==0){
+				
+						newuser=false;}
+			});
+			if(newuser)
+			{
+				$scope.users.push(nuser);
+				var data1=$scope.adduser;
+				var dataString = 'user='+ data1;
+				$scope.adduser=""
+				
+				
+				$.ajax({
+				type: "POST",
+				url: "add.php",
+				data: dataString,
+				cache: false,
+				success: function(result){}
+				});
+				
+				
+			}
+			else{
+				alert('User already present');
+			}
+		
+		
+           
+    }
+    $scope.removeItem = function (x) {
+		var index = $scope.users.indexOf(x);
+		if (index != -1) {
+        $scope.errortext = ""; 
+		var datastring = 'user='+ $scope.users[index].User;
+		$.ajax({
+		type: "POST",
+		url: "remove.php",
+		data: datastring,
+		cache: false,
+		success: function(result){}
+		});
+        $scope.users.splice(index, 1);
+		}
+    }
+});
+</script>
+
+<body ng-app="userlist" ng-controller="myCtrl">
+<div class="header1">
+
+	<div class = "row">
+	<div class = "col-sm-1 col-md-2">
+	<img src="../../utils/logo.jpg" class="logo" />
+	</div>
+	<div class = "col-sm-2 col-md-2">
+	<h2 class="title">Moneymaster</h2>
+	</div>
+	
+	<div class = "col-sm-5 col-md-4">
+	
+	</div>
+	<div class = "col-sm-4 col-md-4">
+	</div>
+	 
+	</div>
+
+
+
+	
+	<div class = "row" align = "center"><h2>Add a new User</h2></div>
+	
+	<div class = "container-fluid">
+		<div class= "row">
+
+			<div class = "col-sm-4"></div>
+
+			<div class = "col-sm-2">
+				<input type="text" style="width:100%" placeholder="Enter Name" ng-model="adduser">
+			</div>
+			<div class = "col-sm-1">
+				<span ng-click="addItem()" class="btn btn-block btn-success">Add</span>
+			</div>
+			
+			<div class = "col-sm-5"></div>
+		</div>
+  
+	</div>
+
+</br>
+<table style="background-color:#ffff;">
+	<tr style="background-color:#595757;color:#ffff"><td>NAME</td><td>Delete</td></tr>
+    <tr ng-repeat="x in users| orderBy:['User']" ng-class-even="'trcolour'" ><td>  {{x.User}} </td><td><span ng-click="removeItem(x)">clear</span></td></tr>
+ </table>
+ </div>
+</body>
+
+</html>
