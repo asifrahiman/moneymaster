@@ -45,12 +45,13 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		alert(error);
 	});
 	$scope.addItem = function () {
+                if($scope.addtype=="Others")
+			$scope.addtype=document.getElementById("otherstype").value;
 		var data1=$scope.addtype;
 		var data2=$scope.adddate;
 		var data3=$scope.addamount;
 		var data5=$scope.addiscredit==true&&1||0;
-		if($scope.addtype=="Others")
-			$scope.addtype=document.getElementById("otherstype").value;
+		
         if (!$scope.addamount||!$scope.addtype||!$scope.adddate){alert("Please fill all the details");return;} 
 		if($scope.editindex==-1){
 			var nitem={'Date':$scope.adddate,'Type':$scope.addtype,'Amount':$scope.addamount,'IsCredit':data5};
