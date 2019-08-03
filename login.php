@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <?php
-require 'config.php';
+require 'utils/config.php';
 $sel = mysqli_query($con,"SELECT * FROM `users` ORDER BY user");
 
 ?>
