@@ -18,14 +18,27 @@ $legend->itemclick = toggleDataSeries;
 $data->legend = $legend;
 $toolTip->shared = true;
 $data->toolTip = $toolTip;
-$type->name = "Myrtle Beach";
-$type->type = "spline";
-$type->showInLegend = true;
-$dataPoints->x="2017-6-24";
-$dataPoints->y=31;
-$type->dataPoints = array($dataPoints);
-$data->data = array($type);
-
+$data->data = array();
+$sel = mysqli_query($con,"SELECT * FROM `type`");
+$i=1;
+while ($row = mysqli_fetch_array($sel)) {
+	${'type'.$i}->name = $row['type'];
+	${'type'.$i}->type = "line";
+	${'type'.$i}->showInLegend = true;
+	${'type'.$i}->dataPoints = array();
+	$j=12;
+	while ($j>=0) {
+		$time = date('Y-m',strtotime("-".$j." month"));
+		${'data'.$i.$j}->label=$time;
+		$result = mysqli_query($con,"SELECT SUM(amount) as expense from expenses where type='".$row['type']."' and user='".$user."' and date like '".$time."%'");
+		$expense = mysqli_fetch_assoc($result);
+		${'data'.$i.$j}->y=(double)($expense['expense']);
+		array_push(${'type'.$i}->dataPoints, ${'data'.$i.$j});
+		$j--;
+	}
+	array_push($data->data, ${'type'.$i});
+	$i++;
+}
 switch ($method) {
 	case 'GET':
 		header('Content-Type: application/json');

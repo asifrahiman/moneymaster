@@ -65,6 +65,7 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 				method: 'GET',
 				url: 'utils/expense.php?start_date='+$scope.mindate
 			}).then(function (success){
+				$scope.items=[];
 				var _len = success.data.length;
 				var  post, i;
 				for (i = 0; i < _len; i++) {
