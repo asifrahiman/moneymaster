@@ -21,20 +21,20 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 	$scope.adddate=today;
 	$http({
 		method: 'GET',
-		url: 'get.php'
+		url: 'utils/expense.php'
 	}).then(function (success){
-	var _len = success.data.length;
-	var  post, i;
-	for (i = 0; i < _len; i++) {
-		post = success.data[i];
-		$scope.items.push({'Dbid':post.dbid,'Date':post.date,'Type':post.type,'Amount':post.amount,'IsCredit':post.isCredit});
-	}
+		var _len = success.data.length;
+		var  post, i;
+		for (i = 0; i < _len; i++) {
+			post = success.data[i];
+			$scope.items.push({'Dbid':post.dbid,'Date':post.date,'Type':post.type,'Amount':post.amount,'IsCredit':post.isCredit});
+		}
 	},function (error){
-		alert(error);
+		alert(error.data);
 	});
 	$http({
 		method: 'GET',
-		url: 'manage/type/get.php'
+		url: 'manage/type/utils/type.php'
 	}).then(function (success){
 		var _len = success.data.length;
 		var  post, i;
@@ -42,11 +42,11 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 			post = success.data[i];
 		$scope.types.push({'Type':post.type});
 	}},function (error){
-		alert(error);
+		alert(error.data);
 	});
 	$scope.addItem = function () {
-                if($scope.addtype=="Others")
-			$scope.addtype=document.getElementById("otherstype").value;
+		if($scope.addtype=="Others")
+		$scope.addtype=document.getElementById("otherstype").value;
 		var data1=$scope.addtype;
 		var data2=$scope.adddate;
 		var data3=$scope.addamount;
@@ -55,38 +55,36 @@ app.controller("myCtrl", function($scope, $filter,$http) {
         if (!$scope.addamount||!$scope.addtype||!$scope.adddate){alert("Please fill all the details");return;} 
 		if($scope.editindex==-1){
 			var nitem={'Date':$scope.adddate,'Type':$scope.addtype,'Amount':$scope.addamount,'IsCredit':data5};
-			$scope.items.push(nitem);
 			var dataString = 'type='+ data1 + '&date='+ data2 + '&amount='+ data3+ '&isCredit='+ data5 ;
-			$.ajax({
-				type: "POST",
-				url: "add.php",
+			$http({
+				method: 'POST',
+				url: 'utils/expense.php',
 				data: dataString,
-				cache: false,
-				success: function(result){
-					$scope.items[$scope.items.indexOf(nitem)].Dbid=parseInt(result);
-				},
-				error: function(request,status,errorThrown) {
-					alert("error occured:"+errorThrown);
-				}
+				headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+			}).then(function (success){
+				nitem.Dbid=parseInt(success.data);
+				$scope.items.push(nitem);
+			},function (error){
+				alert(error.data);
 			});
 		}
 		else
 		{
-			$scope.items[$scope.editindex].Type=$scope.addtype;
-			$scope.items[$scope.editindex].Date=$scope.adddate;
-			$scope.items[$scope.editindex].Amount=$scope.addamount;
-			$scope.items[$scope.editindex].IsCredit=data5;
-			var data4=$scope.items[$scope.editindex].Dbid;
+			var index=$scope.editindex;
+			var data4=$scope.items[index].Dbid;
 			var dataString = 'type='+ data1 + '&date='+ data2 + '&amount='+ data3 +'&dbid='+ data4 + '&isCredit='+ data5;
-			$.ajax({
-				type: "POST",
-				url: "update.php",
+			$http({
+				method: 'PUT',
+				url: 'utils/expense.php',
 				data: dataString,
-				cache: false,
-				success: function(result){},
-				error: function(request,status,errorThrown) {
-					alert("error occured:"+errorThrown);
-				}
+				headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+			}).then(function (success){
+				$scope.items[index].Type=data1;
+				$scope.items[index].Date=data2;
+				$scope.items[index].Amount=data3;
+				$scope.items[index].IsCredit=data5;
+			},function (error){
+				alert(error.data);
 			});
 		}
 		$scope.addtype=""
@@ -101,20 +99,19 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 	$scope.removeItem = function (x) {
 		var index = $scope.items.indexOf(x);
 		if (index != -1) {
-		var datastring = 'dbid='+ $scope.items[index].Dbid;
-		$.ajax({
-		type: "POST",
-		url: "remove.php",
-		data: datastring,
-		cache: false,
-		success: function(result){},
-		error: function(request,status,errorThrown) {
-			alert("error occured");
+			var dataString = 'dbid='+ $scope.items[index].Dbid;
+			$http({
+				method: 'DELETE',
+				url: 'utils/expense.php',
+				data: dataString,
+				headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+			}).then(function (success){
+				$scope.items.splice(index, 1);
+			},function (error){
+				alert(error.data);
+			});
 		}
-		});
-        $scope.items.splice(index, 1);
-		}
-    }
+	}
 	$scope.editItem = function (x) {
 		var index = $scope.items.indexOf(x);
 		var found=false;
@@ -159,15 +156,15 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 	$('#input_date').datepicker({
 		autoclose: true,  
 		format: "yyyy-mm-dd"
-	}).datepicker('setDate', $scope.adddate).on('changeDate', function (ev) {$scope.adddate = $("#input_date").val();$scope.$apply();});
+	}).datepicker('setDate', $scope.adddate).on('changeDate', function (ev) {$scope.adddate = $("#input_date").val();});	
 	$('#from_date').datepicker({
 		autoclose: true,  
 		format: "yyyy-mm-dd",
-	}).datepicker('setDate', $scope.mindate).on('changeDate', function (ev) {$scope.mindate = $("#from_date").val();$scope.$apply();});
+	}).datepicker('setDate', $scope.mindate).on('changeDate', function (ev) {$scope.mindate = $("#from_date").val();});
 	$('#to_date').datepicker({
 		autoclose: true,  
 		format: "yyyy-mm-dd",
-	}).on('changeDate', function (ev) {$scope.maxdate = $("#to_date").val();$scope.$apply();});
+	}).on('changeDate', function (ev) {$scope.maxdate = $("#to_date").val();});
 	$scope.reset = function () {
 		$scope.mindate = d;
 		$scope.maxdate =null;

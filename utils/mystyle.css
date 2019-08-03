@@ -3,6 +3,16 @@ body {
   background-color: lightyellow;
   height: 100%;
 }
+#showChart{
+	background-color: #5bb85b;
+	color: #ffffff;
+	padding: 10px;
+	border: 0px;
+	border-radius: 8px;
+	font-size: 18px;
+	outline: none;
+	cursor: pointer;
+} 
 
 /* Include the padding and border in an element's total width and height */
 * {
