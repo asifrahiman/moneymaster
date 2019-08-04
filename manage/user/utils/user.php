@@ -17,22 +17,31 @@ switch ($method) {
 		echo json_encode($data);
 		break;
 	case 'POST':
-		$user=$_POST["user"];
-		if(!mysqli_query($con,"INSERT INTO users (user)VALUES ('$user')")){
-			echo("Error description: " . mysqli_error($con));
-			header("HTTP/1.0 500 Internal Server Error");
-			die;
+		$action=$_POST['action'];
+		switch($action){
+			case 'POST':
+				$user=$_POST["user"];
+				if(!mysqli_query($con,"INSERT INTO users (user)VALUES ('$user')")){
+					echo("Error description: " . mysqli_error($con));
+					header("HTTP/1.0 500 Internal Server Error");
+					die;
+				}
+				echo "success";
+				break;
+			case 'DELETE':
+				$user=$_POST['user'];
+				if(!mysqli_query($con,"DELETE FROM `users` WHERE `user` = '$user'")){
+					echo("Error description: " . mysqli_error($con));
+					header("HTTP/1.0 500 Internal Server Error");
+					die;
+				}
+				echo "success";  
+				break;
+			default:
+				header("HTTP/1.0 500 Internal Server Error");
+				die;
+				break;
 		}
-		echo "success";
-		break;
-	case 'DELETE':
-		$user=$_DELETE['user'];
-		if(!mysqli_query($con,"DELETE FROM `users` WHERE `user` = '$user'")){
-			echo("Error description: " . mysqli_error($con));
-			header("HTTP/1.0 500 Internal Server Error");
-			die;
-		}
-		echo "success";  
 		break;
 	default:
 		header("HTTP/1.0 500 Internal Server Error");

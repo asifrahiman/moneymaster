@@ -29,7 +29,7 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		if(newuser){
 			$scope.users.push(nuser);
 			var data1=$scope.adduser;
-			var dataString = 'user='+ data1;
+			var dataString = 'user='+ data1 + '&action=POST';
 			$scope.adduser=""
 			$http({
 				method: 'POST',
@@ -51,9 +51,9 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		var index = $scope.users.indexOf(x);
 		if (index != -1) {
 			$scope.errortext = ""; 
-			var dataString = 'user='+ $scope.users[index].User;
+			var dataString = 'user='+ $scope.users[index].User + '&action=DELETE';
 			$http({
-				method: 'DELETE',
+				method: 'POST',
 				url: 'utils/user.php',
 				data: dataString,
 				headers: {'Content-Type': 'application/x-www-form-urlencoded'}

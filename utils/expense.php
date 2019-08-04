@@ -24,39 +24,48 @@ switch ($method) {
 		echo json_encode($data);
 		break;
 	case 'POST':
-		$type=$_POST['type'];
-		$date=$_POST['date'];
-		$amount=$_POST['amount'];
-		$isCredit=$_POST['isCredit'];
-		if(!mysqli_query($con,"INSERT INTO `expenses` (`user`, `type`, `amount`,`date`,`isCredit`) VALUES  ('$user', '$type','$amount', '$date', '$isCredit' )")){
-			echo("Error description: " . mysqli_error($con));
-			header("HTTP/1.0 500 Internal Server Error");
-			die;
+		$action=$_POST['action'];
+		switch($action){
+			case 'POST':
+				$type=$_POST['type'];
+				$date=$_POST['date'];
+				$amount=$_POST['amount'];
+				$isCredit=$_POST['isCredit'];
+				if(!mysqli_query($con,"INSERT INTO `expenses` (`user`, `type`, `amount`,`date`,`isCredit`) VALUES  ('$user', '$type','$amount', '$date', '$isCredit' )")){
+					echo("Error description: " . mysqli_error($con));
+					header("HTTP/1.0 500 Internal Server Error");
+					die;
+				}
+				$dbid=mysqli_insert_id($con);
+				echo $dbid;
+				break;
+			case 'PUT':
+				$type=$_POST['type'];
+				$date=$_POST['date'];
+				$amount=$_POST['amount'];
+				$dbid=$_POST['dbid'];
+				$isCredit= (int)$_POST['isCredit'];
+				if(!mysqli_query($con,"UPDATE `expenses` SET  `type`='$type',`amount`='$amount',`date`='$date',`isCredit`='$isCredit' WHERE `user`='$user' AND `id`=$dbid")){
+					echo("Error description: " . mysqli_error($con));
+					header("HTTP/1.0 500 Internal Server Error");
+					die;
+				}
+				echo "success";
+				break;
+			case 'DELETE':
+				$dbid=$_POST['dbid'];
+				if(!mysqli_query($con,"DELETE FROM `expenses` WHERE `id` = $dbid and `user` = '$user'")){
+					echo("Error description: " . mysqli_error($con));
+					header("HTTP/1.0 500 Internal Server Error");
+					die;
+				}
+				echo "success";  
+				break;
+			default:
+				header("HTTP/1.0 500 Internal Server Error");
+				die;
+				break;
 		}
-		$dbid=mysqli_insert_id($con);
-		echo $dbid;
-		break;
-	case 'PUT':
-		$type=$_PUT['type'];
-		$date=$_PUT['date'];
-		$amount=$_PUT['amount'];
-		$dbid=$_PUT['dbid'];
-		$isCredit= (int)$_PUT['isCredit'];
-		if(!mysqli_query($con,"UPDATE `expenses` SET  `type`='$type',`amount`='$amount',`date`='$date',`isCredit`='$isCredit' WHERE `user`='$user' AND `id`=$dbid")){
-			echo("Error description: " . mysqli_error($con));
-			header("HTTP/1.0 500 Internal Server Error");
-			die;
-		}
-		echo "success";
-		break;
-	case 'DELETE':
-		$dbid=$_DELETE['dbid'];
-		if(!mysqli_query($con,"DELETE FROM `expenses` WHERE `id` = $dbid and `user` = '$user'")){
-			echo("Error description: " . mysqli_error($con));
-			header("HTTP/1.0 500 Internal Server Error");
-			die;
-		}
-		echo "success";  
 		break;
 	default:
 		header("HTTP/1.0 500 Internal Server Error");

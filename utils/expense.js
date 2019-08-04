@@ -55,7 +55,7 @@ app.controller("myCtrl", function($scope, $filter,$http) {
         if (!$scope.addamount||!$scope.addtype||!$scope.adddate){alert("Please fill all the details");return;} 
 		if($scope.editindex==-1){
 			var nitem={'Date':$scope.adddate,'Type':$scope.addtype,'Amount':$scope.addamount,'IsCredit':data5};
-			var dataString = 'type='+ data1 + '&date='+ data2 + '&amount='+ data3+ '&isCredit='+ data5 ;
+			var dataString = 'type='+ data1 + '&date='+ data2 + '&amount='+ data3+ '&isCredit='+ data5 + '&action=POST';
 			$http({
 				method: 'POST',
 				url: 'utils/expense.php',
@@ -72,9 +72,9 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		{
 			var index=$scope.editindex;
 			var data4=$scope.items[index].Dbid;
-			var dataString = 'type='+ data1 + '&date='+ data2 + '&amount='+ data3 +'&dbid='+ data4 + '&isCredit='+ data5;
+			var dataString = 'type='+ data1 + '&date='+ data2 + '&amount='+ data3 +'&dbid='+ data4 + '&isCredit='+ data5 + '&action=PUT';
 			$http({
-				method: 'PUT',
+				method: 'POST',
 				url: 'utils/expense.php',
 				data: dataString,
 				headers: {'Content-Type': 'application/x-www-form-urlencoded'}
@@ -99,9 +99,9 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 	$scope.removeItem = function (x) {
 		var index = $scope.items.indexOf(x);
 		if (index != -1) {
-			var dataString = 'dbid='+ $scope.items[index].Dbid;
+			var dataString = 'dbid='+ $scope.items[index].Dbid + '&action=DELETE';
 			$http({
-				method: 'DELETE',
+				method: 'POST',
 				url: 'utils/expense.php',
 				data: dataString,
 				headers: {'Content-Type': 'application/x-www-form-urlencoded'}

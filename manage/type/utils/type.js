@@ -28,7 +28,7 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		});
 		if(newtype){
 			var data1=$scope.addtype;
-			var dataString = 'type='+ data1;
+			var dataString = 'type='+ data1 + '&action=POST';
 			$http({
 				method: 'POST',
 				url: 'utils/type.php',
@@ -49,9 +49,9 @@ app.controller("myCtrl", function($scope, $filter,$http) {
 		var index = $scope.type.indexOf(x);
 		if (index != -1) {
 			$scope.errortext = ""; 
-			var dataString = 'type='+ $scope.type[index].Type;
+			var dataString = 'type='+ $scope.type[index].Type + '&action=DELETE';
 			$http({
-				method: 'DELETE',
+				method: 'POST',
 				url: 'utils/type.php',
 				data: dataString,
 				headers: {'Content-Type': 'application/x-www-form-urlencoded'}
