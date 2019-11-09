@@ -1,7 +1,6 @@
 <?php
 require 'config.php';
-session_start();
-$user=$_SESSION["user"];
+$user=$_COOKIE["user"];
 $method = $_SERVER['REQUEST_METHOD'];
 if ($method == "PUT" || $method == "DELETE") {
 	parse_str(file_get_contents('php://input'), $params);
@@ -16,7 +15,7 @@ switch ($method) {
 		}else{
 			$start_date = date('Y-m-d', strtotime("-60 days"));
 		}
-		$sel = mysqli_query($con,"SELECT * FROM `expenses` WHERE `user`='$user' and date >'$start_date'");
+		$sel = mysqli_query($con,"SELECT * FROM `expenses` WHERE `user`='$user' and date >='$start_date'");
 		$data = array();
 		while ($row = mysqli_fetch_array($sel)) {
 			$data[] = array("dbid"=>$row['id'],"user"=>$row['user'],"type"=>$row['type'],"date"=>$row['date'],"amount"=>$row['amount'],"isCredit"=>$row['isCredit']);

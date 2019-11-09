@@ -1,7 +1,6 @@
 <?php
 require 'config.php';
-session_start();
-$user=$_SESSION["user"];
+$user=$_COOKIE["user"];
 $mindate=$_GET['mindate'];
 $maxdate=$_GET['maxdate'];
 $sql="SELECT `type` AS Type ,SUM(amount) AS Amount FROM `expenses` ";

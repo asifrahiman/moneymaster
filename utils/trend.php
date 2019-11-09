@@ -1,8 +1,7 @@
 <?php
 require 'config.php';
-session_start();
 error_reporting(0);
-$user=$_SESSION["user"];
+$user=$_COOKIE["user"];
 $method = $_SERVER['REQUEST_METHOD'];
 $data->animationEnabled = true;
 $title->text = "Expense Trend";

@@ -1,14 +1,11 @@
 <!DOCTYPE html>
 <?php
-session_start();
 if(isset($_POST["user"])){
-	$_SESSION["user"] = $_POST["user"];
 	setcookie('user', $_POST["user"], time() + (86400 * 10), "/");
+	$user=$_POST["user"];
 }elseif(isset($_COOKIE['user'])){
-	$_SESSION["user"] =$_COOKIE['user'];
-    setcookie('user', $_SESSION["user"], time() + (86400 * 10), "/");    
-}elseif(isset($_SESSION['user'])){
-	setcookie('user', $_SESSION["user"], time() + (86400 * 10), "/");    
+    setcookie('user', $_COOKIE["user"], time() + (86400 * 10), "/");
+	$user=$_POST["user"];    
 }else{
 	header("Location: login.php");
 	die();
@@ -38,7 +35,7 @@ if(isset($_POST["user"])){
 	<body ng-app="moneymaster" ng-controller="myCtrl">
 		<div class="header1">
 			<?php include("utils/header.php");?>
-			<h2 align = "center">Hi <?php echo $_SESSION["user"]?></h2>
+			<h2 align = "center">Hi <?php echo $user?></h2>
 			<div class = "container" >	
 				<div id = "entry" class ="row" >
 					<div class = "col-sm-1"></div>
