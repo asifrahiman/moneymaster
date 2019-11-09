@@ -5,7 +5,7 @@ if(isset($_POST["user"])){
 	$user=$_POST["user"];
 }elseif(isset($_COOKIE['user'])){
     setcookie('user', $_COOKIE["user"], time() + (86400 * 10), "/");
-	$user=$_POST["user"];    
+	$user=$_COOKIE["user"];    
 }else{
 	header("Location: login.php");
 	die();
