@@ -261,15 +261,16 @@ input:checked + .slider:before {
 .redborder{
 	border: 2px solid orange;
 }
-@media(min-width:992px){
-.title{margin-left: -87%;}
-}
-@media(max-width:500px){
-body{zoom: 70%;display:inline-block;}
+@media(max-width:999px){
+body{zoom: 70%;}
 .logo {
   width: 10%;
 }
 .switch{ 
       margin-left: 5%;
 }
+}
+@media(min-width:1000px){
+body{zoom: 140%;}
+
 }
