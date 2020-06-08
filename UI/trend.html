@@ -1,0 +1,42 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="description" content="Bandwidth Utilisation">
+		<meta name="author" content="Asif Abdul Rahiman">
+		<title>Moneymaster</title>
+		<link rel="shortcut icon" href="utils/favicon.ico" type="image/x-icon">
+		<link rel="icon" href="utils/favicon.ico" type="image/x-icon">
+		<link href="utils/bootstrap.min.css" rel="stylesheet">
+		<script src="utils/jquery.js"></script>  
+		<script src="utils/Chart.min.js"></script>  
+		<script src="utils/bootstrap.min.js"></script>
+		<style>
+		body {background-color: #F5F6FA;color:grey;}
+		</style>
+	</head>
+	<body ng-app="moneymaster" ng-controller="myCtrl">
+		<div class="head">
+			<div class = "row">
+				<div onclick="window.location='/';" class = "col-sm-2 col-md-2">
+					<h2 class="title">Moneymaster</h2>
+				</div>
+				<div class = "col-sm-10 col-md-10"></div>
+			</div>
+		</div>
+		<div>
+			<canvas id="chartContainer" style="height: 500px; width: 100%;"></canvas>
+		</div>
+	</body>
+	<script>
+	window.onload = function () {
+	$.get("http://localhost:5001/moneymaster/trend?user="+window.localStorage.getItem('user'), function(data, status){
+		var ctx = document.getElementById('chartContainer');
+		window.myLine = new Chart(ctx, data);
+	});
+}
+	</script>
+</html>

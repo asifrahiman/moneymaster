@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Bandwidth Utilisation">
+<meta name="author" content="Asif Abdul Rahiman">
+<title>Moneymaster</title>
+<link rel="shortcut icon" href="utils/favicon.ico" type="image/x-icon"/>
+<link rel="icon" href="utils/favicon.ico" type="image/x-icon"/>
+<link rel="stylesheet" type="text/css" href="utils/mystyle.css"/>
+<link href="utils/bootstrap.min.css" rel="stylesheet"/>   
+<script src="utils/jquery.js" ></script> 
+<script src="utils/bootstrap.min.js"></script> 
+<script src="utils/angular.min.js"></script>
+<script src="utils/dirPagination.js"></script>
+<script src="utils/login.js"></script>
+</head>
+<body class="backc" ng-app="moneymaster" ng-controller="myCtrl">
+	<div class="header1">
+		<div class = "row">
+			<div onclick="window.location='/';" class = "col-sm-2 col-md-2">
+				<h2 class="title">Moneymaster</h2>
+			</div>
+			<div class = "col-sm-10 col-md-10"></div>
+		</div>
+		<div class = "overlay">
+			<h2 align = "center">Select your name.</h2>
+			<form action="index.html" method="get" class="">
+				<div class = "container-fluid">
+					<div class = "row">			
+						<div class = "col-sm-2"></div>			
+						<div class = "col-sm-6">
+							<select class="form-control"  name="user" ng-model="selectUser">
+								<option value="">Select your name</option>
+								<option ng-repeat="x in users|orderBy:'User'" value="{{x.User}}">{{x.User}}</option>
+							</select>
+						</div>			
+						<div class = "col-sm-2">
+							<button class="btn btn-block btn-success" type="submit">Login</button>
+						</div>
+					</div>
+				</div>
+			</form>		  
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"/>
+		<meta charset="utf-8"/>
+		<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1"/>
+		<meta name="description" content="Bandwidth Utilisation"/>
+		<meta name="author" content="Asif Abdul Rahiman"/>
+		<title>Moneymaster</title>
+		<link rel="shortcut icon" href="utils/favicon.ico" type="image/x-icon"/>
+		<link rel="icon" href="utils/favicon.ico" type="image/x-icon"/>
+		<link rel="stylesheet" type="text/css" href="utils/mystyle.css"/>
+		<link href="utils/bootstrap.min.css" rel="stylesheet"/>  
+		<link href="utils/bootstrap-datepicker.css" rel="stylesheet"/>  
+		<script src="utils/jquery.js" ></script> 
+		<script src="utils/bootstrap.min.js"></script> 
+		<script src="utils/bootstrap-datepicker.js"></script>
+		<script src="utils/angular.min.js"></script>
+		<script src="utils/dirPagination.js"></script>
+		<script src="utils/expense.js"></script>
+	</head>
+	<body id="controller" ng-app="moneymaster" ng-controller="myCtrl" onload="checkCookie()">
+		<div class="header1">
+			<div class = "row">
+				<div onclick="window.location='/';" class = "col-sm-2 col-md-2">
+					<h2 class="title">Moneymaster</h2>
+				</div>
+				<div class = "col-sm-10 col-md-10"></div>
+			</div>
+			<h2 align = "center" id="username" ng-change="updateUser()" ng-model="username">Hi {{user}}</h2>
+			<div class = "container" >	
+				<div id = "entry" class ="row" >
+					<div class = "col-sm-1"></div>
+					<div  class ="col-sm-4" >
+						<select ng-change="checkVal()" id = "typeSelect" class="form-control" ng-model="addtype">
+							<option value="">type</option>
+							<option ng-repeat="x in types|orderBy:'type'" value="{{x.type}}">{{x.type}}</option>Others
+                            <option value="Others">Others</option>
+						</select>
+						<input ng-show="otherstype" type = "text" placeholder = "Others" id ="otherstype" style = "width:100%"/>
+					</div>
+					<div  class ="col-sm-3" >
+						<input type="decimal" id = "amount" placeholder="amount" ng-model="addamount"> 
+						<label class="switch">
+						  <input type="checkbox" ng-model="addiscredit">
+						  <span class="slider round"></span>
+						</label>
+					</div>
+					<div  class ="col-sm-2" >
+						<input type="text" id="input_date" placeholder="Select date" ng-model="adddate"/>
+					</div>
+					<div  class ="col-sm-1" >
+						<button ng-click="addItem()" class="btn btn-block btn-success"> Add </button> 
+					</div>
+					<div class = "col-sm-1"></div>
+				</div>
+				</br>
+				<div id = "filter" class = "row">
+					<div class = "col-sm-2"></div>
+					<div class = "col-sm-1">
+						<button class="btn btn-info" onclick="window.location='report.html';"> Report </button>
+					</div>	
+					<div class = "col-sm-1" ><div align = "right"><label>Filter By:</label></div></div>	
+					<div  class ="col-sm-2" >			
+						<select id = "type" ng-model="filtertype" class="form-control">
+							<option value="">type</option>
+							<option ng-repeat="x in items | rangeFilter:mindate:maxdate| unique:'type' |orderBy:'type'" value="{{x.type}}">{{x.type}}</option>
+						</select>
+					</div>
+					<div  class ="col-sm-2" >
+						<input type="text" id="from_date"  placeholder="Select from date" ng-model="mindate">
+					</div>			
+					<div  class ="col-sm-3" >
+						<input type="text" id="to_date"  placeholder="Select to date" ng-model="maxdate">
+						<label class="switch">
+						  <input type="checkbox" ng-change="creditfiltervalue()" ng-model="filtercredit">
+						  <span class="slider round"></span>
+						</label>
+					</div>			
+					<div  class ="col-sm-1" align = "right">
+						<button class="btn btn-block btn-success" ng-click="reset()"> Clear </button>
+					</div>  
+				</div>
+				<div class= "row">
+					<div  class ="col-sm-7"></div>
+					<div  class ="col-sm-3 pull-right" >
+						<h4 >Credit Card:{{ filtered|credittotal}}</h4>
+					</div>
+					<div  class ="col-sm-2 pull-right" >
+						<h4 >Expense:{{ filtered|expense}}</h4>
+					</div>
+				</div>
+				<div class= "row">
+					<div  class ="col-sm-9"></div>
+					<div  class ="col-sm-3 pull-right" >
+						<h4 >Total Expense:{{ filtered|total}}</h4>
+					</div>
+				</div>
+			</div>
+			<div class="row">
+				<div  align= "center">
+					<dir-pagination-controls
+						max-size="8"
+						direction-links="true"
+						boundary-links="true" >
+					</dir-pagination-controls>
+				</div>
+				<p ng-init="Credit='(Credit)'"/>
+			</div>
+			<table style="background-color:#ffff">
+				<tr style="background-color:#595757;color:#ffff"><td>type</td><td>amount</td><td>date</td><td>Delete</td></tr>
+				<tr dir-paginate="x in filtered =(items | orderBy:'-date'| rangeFilter:mindate:maxdate| filter:{ type: filtertype}| filter:{ isCredit: creditfilter })|itemsPerPage:10" ng-class-even="'trcolour'" ng-class="{'redborder': x.isCredit ==1}"><td style="max-width:30%"> {{x.type}}</td><td>  {{x.amount}} </td><td> {{x.date}}</td><td><span ng-click="editItem(x)">edit</span> | <span ng-click="removeItem(x)">clear</span></td></tr>
+			</table>
+		</div>
+	</body>
+	<script>
+	function setCookie(cname,cvalue,exdays) {
+	  var d = new Date();
+	  d.setTime(d.getTime() + (exdays*24*60*60*1000));
+	  var expires = "expires=" + d.toGMTString();
+	  document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+	}
+
+	function getCookie(cname) {
+	  var name = cname + "=";
+	  var decodedCookie = decodeURIComponent(document.cookie);
+	  var ca = decodedCookie.split(';');
+	  for(var i = 0; i < ca.length; i++) {
+		var c = ca[i];
+		while (c.charAt(0) == ' ') {
+		  c = c.substring(1);
+		}
+		if (c.indexOf(name) == 0) {
+		  return c.substring(name.length, c.length);
+		}
+	  }
+	  return "";
+	}
+
+	function checkCookie() {
+	  var user=getCookie("user");
+	  var urlUser=getUrlParam("user");
+	  if (user != "") {
+		setCookie("user", user, 10);
+		window.localStorage.setItem('user', user);
+		angular.element(document.getElementById('controller')).scope().init();
+	  } else if(urlUser!== undefined && urlUser!=""){
+		setCookie("user", urlUser, 10);
+		window.localStorage.setItem('user', urlUser);
+		angular.element(document.getElementById('controller')).scope().init();
+	  }else{
+		 window.location.replace("login.html");
+	  }
+	  //location.reload();
+	}
+	
+	var getParams = function (url) {
+		var params = {};
+		var parser = document.createElement('a');
+		parser.href = url;
+		var query = parser.search.substring(1);
+		var vars = query.split('&');
+		for (var i = 0; i < vars.length; i++) {
+			var pair = vars[i].split('=');
+			params[pair[0]] = decodeURIComponent(pair[1]);
+		}
+		return params;
+	};
+	var getUrlParam=function (param) {
+		var params=getParams(window.location.href);
+		return params[param];
+	}
+	</script>
+</html>

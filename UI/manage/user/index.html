@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="description" content="To do list web app">
+		<meta name="author" content="Asif Abdul Rahiman">
+		<title>Moneymaster</title>
+		<link rel="shortcut icon" href="../../utils/favicon.ico" type="image/x-icon">
+		<link rel="icon" href="../../utils/favicon.ico" type="image/x-icon">
+		<link rel="stylesheet" type="text/css" href="../../utils/mystyle.css">
+		<link href="../../utils/bootstrap.min.css" rel="stylesheet">  
+		<link href="../../utils/bootstrap-datepicker.css" rel="stylesheet">  
+		<script src="../../utils/jquery.js"></script>  
+		<script src="../../utils/bootstrap.min.js"></script>  
+		<script src="../../utils/bootstrap-datepicker.js"></script> 
+		<script src="../../utils/angular.min.js"></script>
+		<script src="utils/user.js"></script>
+	</head>
+	<body ng-app="userlist" ng-controller="myCtrl">
+		<div class="header1">
+
+			<div class = "row">
+				<div onclick="window.location='../../';" class = "col-sm-2 col-md-2">
+					<h2 class="title">Moneymaster</h2>
+				</div>
+				<div class = "col-sm-10 col-md-10"></div>
+			</div>
+			<div class = "row" align = "center"><h2>Add a new User</h2></div>
+			<div class = "container-fluid">
+				<div class= "row">
+					<div class = "col-sm-4"></div>
+					<div class = "col-sm-2">
+						<input type="text" style="width:100%" placeholder="Enter Name" ng-model="adduser">
+					</div>
+					<div class = "col-sm-1">
+						<span ng-click="addItem()" class="btn btn-block btn-success">Add</span>
+					</div>
+					<div class = "col-sm-5"></div>
+				</div>
+			</div>
+			</br>
+			<table style="background-color:#ffff;">
+				<tr style="background-color:#595757;color:#ffff"><td>NAME</td><td>Delete</td></tr>
+				<tr ng-repeat="x in users| orderBy:['User']" ng-class-even="'trcolour'" ><td>  {{x.User}} </td><td><span ng-click="removeItem(x)">clear</span></td></tr>
+			</table>
+		</div>
+	</body>
+</html>
