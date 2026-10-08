@@ -103,31 +103,42 @@ Redeploy, and you're live.
 
 ## Importing data from the old app
 
-The old app stored a display name per user and no email. To import, you map each old name to the Google account
-that should own that data. The script is idempotent: running it again skips rows it has already imported.
-
-1. **Export the old `expenses` table.** In phpMyAdmin on the old host, open `expenses` → **Export** → *Custom* →
-   Format **CSV** → tick **"Put columns names in the first row"**. InfinityFree doesn't allow remote MySQL
-   connections, so CSV is the easiest route.
-2. **Do a dry run against the new database** (local or Neon):
+1. In phpMyAdmin on the old host, select the database and choose **Export → Quick → SQL**. This downloads a
+   `.sql` file containing `expenses`, `type` and `users`.
+2. Do a dry run. Old users had a display name and no email, so map each one you want to the Google account
+   that should own the data:
 
    ```bash
-   DATABASE_URL="<neon direct url>" npm run import:legacy -- \
-     --csv expenses.csv --map "Asif=you@gmail.com,Sara=sara@gmail.com" --dry-run
+   DATABASE_URL="<Neon unpooled url>" npm run import:legacy -- \
+     --sql moneymaster.sql --map "Asif=you@gmail.com" --fix-typos --prune-unused --dry-run
    ```
 
-   The dry run lists any rows it would skip, for example a bad date, an amount of 0 or less, or a user with no
-   mapping.
-3. **Run it again without `--dry-run`.** When you then sign in with Google using that email, your history is there.
+   The dry run lists the categories it will create and any rows it will skip.
+3. Run the same command again without `--dry-run`, then sign in with that Google account.
 
-How the import converts the old data:
+How old data maps to the new app:
 
-- The old `Credit` type becomes an **Income** category, and `Savings` becomes a **Savings** category. You can
-  change which types are treated this way with `--income-types` and `--savings-types`.
-- `isCredit = 1` becomes **paid by card**.
-- Each user gets their own categories, created from the types they actually used.
-- You can also read straight from MySQL with `--mysql mysql://user:pass@host/db`, for example from a local
-  XAMPP copy.
+| Old app | New app |
+|---|---|
+| Saved types (the `type` table) | Categories. `Credit` becomes income, `Savings` becomes savings |
+| Free-text "Others" types | The **Others** category, with the old label kept as the note (searchable) |
+| `isCredit = 1` | Paid by card |
+| Rows with amount ≤ 0 | Skipped and listed in the report |
+
+Useful options:
+
+- `--fix-typos` merges known variants, for example Intrest → Interest and CarryForward → Carry forward.
+- `--prune-unused` removes the starter categories that are created on first sign-in, if they're still unused.
+- `--categories all` turns every distinct label into its own category instead of using Others.
+
+Running the import again is safe: rows that were already imported are skipped. You can also import from a
+CSV with `--csv expenses.csv`, or read a live MySQL database with `--mysql <url>`.
+
+### One-time entries
+
+Use **Category → "One-time (don't save as a category)…"** for one-off spends. The entry goes into **Others**,
+and what you type becomes its label, so your category list doesn't grow. If a label keeps recurring, create a
+proper category for it in Settings.
 
 ## Project layout
 

@@ -3,6 +3,15 @@ import { isIsoDate, presetRange, RANGE_PRESETS, type RangePreset } from "./dates
 /** Sentinel value of the category <select> meaning "create a new category". */
 export const NEW_CATEGORY = "__new__";
 
+/**
+ * Sentinel for a one-time entry: saved under a single catch-all category
+ * (ONE_OFF_CATEGORY) with its label in the note, so the category list doesn't grow.
+ * The legacy import uses the same "Others" category for old free-text types.
+ */
+export const ONE_OFF = "__once__";
+export const ONE_OFF_CATEGORY = "Others";
+export const isOneOffCategory = (name: string) => name.trim().toLowerCase() === ONE_OFF_CATEGORY.toLowerCase();
+
 export type Kind = "expense" | "income" | "savings";
 export const KINDS: { value: Kind; label: string }[] = [
   { value: "expense", label: "Expense" },

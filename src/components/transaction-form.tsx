@@ -5,7 +5,7 @@ import { useActionState, useId, useRef, useState } from "react";
 import { saveTransaction, type ActionState } from "@/server/actions";
 import type { CategoryRow, TxRow } from "@/server/queries";
 import { isFormula, parseAmount } from "@/lib/amount";
-import { KINDS, NEW_CATEGORY, type Kind } from "@/lib/filters";
+import { isOneOffCategory, KINDS, NEW_CATEGORY, ONE_OFF, type Kind } from "@/lib/filters";
 import { formatMoney } from "@/lib/format";
 import { Button, Field, Input, Select } from "./ui";
 import { toast } from "./toast";
@@ -21,7 +21,11 @@ type Props = {
 
 export function TransactionForm({ categories, today, currency, transaction, onDone, submitLabel }: Props) {
   const uid = useId();
-  const [categoryId, setCategoryId] = useState(transaction?.categoryId ?? "");
+  // The catch-all "Others" category isn't listed; it's reached through the "One-time…" option.
+  const listed = categories.filter((c) => !isOneOffCategory(c.name));
+  const [categoryId, setCategoryId] = useState(
+    transaction ? (isOneOffCategory(transaction.categoryName) ? ONE_OFF : transaction.categoryId) : "",
+  );
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<Kind>("expense");
   const [amount, setAmount] = useState(transaction ? String(Number(transaction.amount)) : "");
@@ -41,7 +45,7 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
         setNote("");
         setNewName("");
         setCard(false);
-        if (categoryId === NEW_CATEGORY) setCategoryId("");
+        if (categoryId === NEW_CATEGORY || categoryId === ONE_OFF) setCategoryId("");
         amountRef.current?.focus();
       }
       onDone?.();
@@ -53,6 +57,7 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
 
   const err = state.ok ? undefined : state.fieldErrors;
   const preview = amount && isFormula(amount) ? parseAmount(amount) : null;
+  const oneOff = categoryId === ONE_OFF;
   const selectedKind =
     categoryId === NEW_CATEGORY ? newKind : categories.find((c) => c.id === categoryId)?.kind ?? "expense";
   const id = (name: string) => `${uid}-${name}`;
@@ -74,7 +79,7 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
             Choose…
           </option>
           {KINDS.map((k) => {
-            const items = categories.filter((c) => c.kind === k.value);
+            const items = listed.filter((c) => c.kind === k.value);
             return items.length ? (
               <optgroup key={k.value} label={k.label}>
                 {items.map((c) => (
@@ -85,7 +90,10 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
               </optgroup>
             ) : null;
           })}
-          <option value={NEW_CATEGORY}>+ New category…</option>
+          <optgroup label="Other">
+            <option value={ONE_OFF}>One-time (don&apos;t save as a category)…</option>
+            <option value={NEW_CATEGORY}>+ New category…</option>
+          </optgroup>
         </Select>
       </Field>
 
@@ -163,14 +171,22 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
         />
       </Field>
 
-      <Field label="Note (optional)" htmlFor={id("note")}>
+      <Field
+        label={oneOff ? "What was it?" : "Note (optional)"}
+        htmlFor={id("note")}
+        error={err?.note}
+        hint={oneOff ? "Saved under “Others” — your category list stays the same." : undefined}
+      >
         <Input
           id={id("note")}
           name="note"
           value={note}
           maxLength={200}
-          placeholder="e.g. Dinner with Sam"
+          placeholder={oneOff ? "e.g. Washing machine repair" : "e.g. Dinner with Sam"}
           onChange={(e) => setNote(e.target.value)}
+          aria-invalid={!!err?.note}
+          autoFocus={oneOff && !transaction}
+          required={oneOff}
         />
       </Field>
 

@@ -8,7 +8,7 @@ import { db } from "@/db";
 import { categories, transactions, users } from "@/db/schema";
 import { parseAmount } from "@/lib/amount";
 import { isIsoDate } from "@/lib/dates";
-import { NEW_CATEGORY } from "@/lib/filters";
+import { NEW_CATEGORY, ONE_OFF, ONE_OFF_CATEGORY } from "@/lib/filters";
 import { CURRENCIES } from "@/lib/format";
 import { isSlot, nextSlot } from "@/lib/palette";
 import { requireUser } from "./dal";
@@ -58,7 +58,11 @@ export async function saveTransaction(_prev: ActionState, form: FormData): Promi
   if (!categoryId) errors.categoryId = "Choose a category";
 
   let newCategory: { name: string; kind: z.infer<typeof kindSchema> } | null = null;
-  if (categoryId === NEW_CATEGORY) {
+  if (categoryId === ONE_OFF) {
+    // One-time entry: goes to the catch-all category, described by its note.
+    if (!note) errors.note = "Say what it was";
+    newCategory = { name: ONE_OFF_CATEGORY, kind: "expense" };
+  } else if (categoryId === NEW_CATEGORY) {
     const name = nameSchema.safeParse(form.get("newCategoryName") ?? "");
     const kind = kindSchema.safeParse(form.get("newCategoryKind") ?? "expense");
     if (!name.success) errors.newCategoryName = name.error.issues[0].message;

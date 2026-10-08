@@ -5,6 +5,7 @@ import { useCallback, useState, useTransition } from "react";
 import { deleteTransaction } from "@/server/actions";
 import type { CategoryRow, TxRow } from "@/server/queries";
 import { formatDate } from "@/lib/dates";
+import { isOneOffCategory } from "@/lib/filters";
 import { formatMoney } from "@/lib/format";
 import { Modal } from "./modal";
 import { toast } from "./toast";
@@ -63,8 +64,18 @@ export function TransactionList({ rows, categories, today, currency }: Props) {
                   >
                     <CategoryDot color={r.categoryColor} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-ink">{r.categoryName}</span>
-                      {r.note && <span className="block truncate text-xs text-muted">{r.note}</span>}
+                      {isOneOffCategory(r.categoryName) && r.note ? (
+                        // One-time entry: what it was matters more than the catch-all category.
+                        <>
+                          <span className="block truncate text-sm font-medium text-ink">{r.note}</span>
+                          <span className="block truncate text-xs text-muted">{r.categoryName}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="block truncate text-sm font-medium text-ink">{r.categoryName}</span>
+                          {r.note && <span className="block truncate text-xs text-muted">{r.note}</span>}
+                        </>
+                      )}
                     </span>
                     {r.paidByCard && (
                       <span
