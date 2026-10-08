@@ -86,6 +86,10 @@ gh repo create moneymaster --private --source=. --push      # or create the repo
 2. In the project, open **Storage → Create Database → Neon (Postgres)** and pick the free plan in a region near
    you, for example *Singapore* or *Mumbai*. This sets `DATABASE_URL` and `DATABASE_URL_UNPOOLED` for you.
 3. Every deploy runs `npm run vercel-build`, which applies the migrations and then builds the app.
+4. Keep the app next to the database: `vercel.json` pins the server functions to `sin1` (Singapore), where the
+   Neon database lives. If you create the database in another region, change `regions` to match
+   (for example `bom1` for Mumbai or `iad1` for US East); every page load makes several database calls, so a
+   cross-continent gap makes the app noticeably slower.
 
 ### 3. Create Google sign-in credentials
 

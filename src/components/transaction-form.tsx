@@ -1,7 +1,8 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useActionState, useId, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { startTransition, useActionState, useId, useRef, useState } from "react";
 import { saveTransaction, type ActionState } from "@/server/actions";
 import type { CategoryRow, TxRow } from "@/server/queries";
 import { isFormula, parseAmount } from "@/lib/amount";
@@ -33,6 +34,7 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
   const [card, setCard] = useState(transaction?.paidByCard ?? false);
   const [note, setNote] = useState(transaction?.note ?? "");
   const amountRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   // Wrap the server action so success handling (toast, reset, close) runs in
   // the same transition instead of in an effect.
@@ -41,6 +43,8 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
     if (res.ok) {
       toast(res.message ?? "Saved");
       notifyLedgerChanged();
+      // New category: update the pickers in the background without holding up the form.
+      if (res.categoriesChanged) startTransition(() => router.refresh());
       if (!transaction) {
         setAmount("");
         setNote("");

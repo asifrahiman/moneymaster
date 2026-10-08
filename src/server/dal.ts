@@ -42,14 +42,19 @@ export const requireUser = cache(async (): Promise<CurrentUser> => {
   const id = session?.user?.id;
   if (!id) redirect("/login");
 
-  const user = await db.query.users.findFirst({ where: eq(users.id, id) });
+  // Both queries only need the session's user id, so run them together: one
+  // database round trip instead of two on every page, API call and action.
+  const [user, found] = await Promise.all([
+    db.query.users.findFirst({ where: eq(users.id, id) }),
+    db
+      .select({ id: books.id, name: books.name, period: books.period })
+      .from(books)
+      .where(eq(books.userId, id))
+      .orderBy(asc(books.createdAt)),
+  ]);
   if (!user) redirect("/login");
 
-  let list = await db
-    .select({ id: books.id, name: books.name, period: books.period })
-    .from(books)
-    .where(eq(books.userId, user.id))
-    .orderBy(asc(books.createdAt));
+  let list = found;
   if (list.length === 0) list = [await createBook(user.id, { name: "Personal", period: "month", starter: true })];
   // Only a book the user owns can be active; fall back to their first one.
   const book = list.find((b) => b.id === user.activeBookId) ?? list[0];

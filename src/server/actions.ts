@@ -19,6 +19,8 @@ export type ActionState = {
   fieldErrors?: Record<string, string>;
   /** Changes on every successful submit so forms can reset themselves. */
   at?: number;
+  /** A transaction save created a category or saved a one-time label: the category lists need a refresh. */
+  categoriesChanged?: boolean;
 };
 
 const kindSchema = z.enum(["expense", "income", "savings"]);
@@ -67,6 +69,35 @@ export async function saveTransaction(_prev: ActionState, form: FormData): Promi
   if (Object.keys(errors).length || !amount.ok || !categoryName.success) return fail(errors);
   const name = categoryName.data;
 
+  let categoriesChanged = false;
+
+  // Fast path, one statement (one round trip): the category already exists and
+  // nothing about it changes, which is almost every save. Anything else (a new
+  // category, saving a one-time label, a missing row) goes through the full
+  // transaction below.
+  if (!saveAsCategory) {
+    const fields = { amount: amount.value.toFixed(2), occurredOn, paidByCard, note };
+    const done = id
+      ? await db.execute(sql`
+          update ${transactions} t
+             set category_id = c.id, amount = ${fields.amount}, occurred_on = ${fields.occurredOn},
+                 paid_by_card = ${fields.paidByCard}, note = ${fields.note}, updated_at = now()
+            from ${categories} c
+           where t.id = ${id} and t.user_id = ${user.id} and t.book_id = ${user.book.id}
+             and c.user_id = ${user.id} and c.book_id = ${user.book.id} and lower(c.name) = lower(${name})
+          returning t.id`)
+      : await db.execute(sql`
+          insert into ${transactions} (user_id, book_id, category_id, amount, occurred_on, paid_by_card, note)
+          select ${user.id}, ${user.book.id}, c.id, ${fields.amount}, ${fields.occurredOn}, ${fields.paidByCard}, ${fields.note}
+            from ${categories} c
+           where c.user_id = ${user.id} and c.book_id = ${user.book.id} and lower(c.name) = lower(${name})
+           limit 1
+          returning id`);
+    if (done.rows.length) {
+      return { ok: true, message: id ? "Transaction updated" : "Transaction added", at: Date.now(), categoriesChanged };
+    }
+  }
+
   try {
     await db.transaction(async (tx) => {
       let categoryId: string;
@@ -77,6 +108,7 @@ export async function saveTransaction(_prev: ActionState, form: FormData): Promi
         categoryId = existing.id;
         if (saveAsCategory && !existing.saved) {
           await tx.update(categories).set({ saved: true }).where(eq(categories.id, existing.id));
+          categoriesChanged = true;
         }
       } else {
         const used = await tx.select({ color: categories.color }).from(categories).where(catInBook(user));
@@ -92,6 +124,7 @@ export async function saveTransaction(_prev: ActionState, form: FormData): Promi
           })
           .returning({ id: categories.id });
         categoryId = created.id;
+        categoriesChanged = true;
       }
 
       const values = { categoryId, amount: amount.value.toFixed(2), occurredOn, paidByCard, note };
@@ -112,15 +145,17 @@ export async function saveTransaction(_prev: ActionState, form: FormData): Promi
     return { ok: false, message: "Couldn't save. Please try again." };
   }
 
-  refresh();
-  return { ok: true, message: id ? "Transaction updated" : "Transaction added", at: Date.now() };
+  // No refresh() here: re-rendering the whole page before replying is what made
+  // saving feel slow. The ledger reloads itself on the client; when categories
+  // changed, the form refreshes the page in the background.
+  return { ok: true, message: id ? "Transaction updated" : "Transaction added", at: Date.now(), categoriesChanged };
 }
 
 export async function deleteTransaction(id: string): Promise<ActionState> {
   const user = await requireUser();
   if (!z.uuid().safeParse(id).success) return { ok: false, message: "Invalid id" };
   await db.delete(transactions).where(and(eq(transactions.id, id), txInBook(user)));
-  refresh();
+  // The list reloads itself on the client (see notifyLedgerChanged); no page re-render needed.
   return { ok: true, message: "Transaction deleted", at: Date.now() };
 }
 
