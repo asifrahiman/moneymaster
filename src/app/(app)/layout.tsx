@@ -1,5 +1,4 @@
 import { Wallet } from "lucide-react";
-import Link from "next/link";
 import { Suspense } from "react";
 import { BottomNav, SideNav } from "@/components/nav";
 import { ThemeToggle } from "@/components/theme";
@@ -8,14 +7,20 @@ import { UserMenu } from "@/components/user-menu";
 import { BookSwitcher } from "@/components/book-switcher";
 import { requireUser } from "@/server/dal";
 
+/**
+ * A plain <a>, not <Link>: clicking the logo does a full reload of the home page
+ * (fresh data, the book's default filters). The active book is stored on the
+ * server, so it doesn't change.
+ */
 function Logo({ iconOnly = false }: { iconOnly?: boolean }) {
   return (
-    <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-ink" aria-label="MoneyMaster home">
+    // eslint-disable-next-line @next/next/no-html-link-for-pages -- a full reload is the point
+    <a href="/" className="flex shrink-0 items-center gap-2 font-semibold tracking-tight text-ink" aria-label="MoneyMaster home">
       <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-accent-ink">
         <Wallet className="size-4" aria-hidden />
       </span>
       {!iconOnly && "MoneyMaster"}
-    </Link>
+    </a>
   );
 }
 

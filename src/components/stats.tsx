@@ -46,13 +46,29 @@ export function StatGrid({
     );
   }
   const money = (v: number) => formatMoney(v, currency);
-  const net = Math.abs(totals.net) < 0.005 ? 0 : totals.net;
+  const clean = (n: number) => {
+    const r = Math.round(n * 100) / 100;
+    return Math.abs(r) < 0.005 ? 0 : r;
+  };
+  const signed = (n: number) => `${n < 0 ? "−" : ""}${money(Math.abs(n))}`;
+  // Main figure matches the bank account: card spends haven't left it yet.
+  // The figure after card spends (income − spent − saved) goes underneath.
+  const bank = clean(totals.net + totals.card);
+  const afterCard = clean(totals.net);
   const balance = (
     <Stat
       label="Balance"
-      value={`${net < 0 ? "−" : ""}${money(Math.abs(net))}`}
-      emphasis={net < 0 ? "text-negative" : "text-ink"}
-      sub={`Income − spent − saved${since ? ` since ${formatDate(since)}` : ""}`}
+      value={signed(bank)}
+      emphasis={bank < 0 ? "text-negative" : "text-ink"}
+      sub={
+        <>
+          <span className="block" title="Income − spent − saved, including credit card spends">
+            With card spends:{" "}
+            <span className={`tabular font-medium ${afterCard < 0 ? "text-negative" : "text-ink"}`}>{signed(afterCard)}</span>
+          </span>
+          {since && <span className="mt-0.5 block text-muted">Since {formatDate(since)}</span>}
+        </>
+      }
     />
   );
 
