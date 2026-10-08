@@ -1,8 +1,8 @@
 "use client";
 
-import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { BookmarkPlus, ChevronRight, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useActionState, useCallback, useId, useState, useTransition } from "react";
-import { deleteCategory, saveCategory, type ActionState } from "@/server/actions";
+import { deleteCategory, saveCategory, setCategorySaved, type ActionState } from "@/server/actions";
 import type { CategoryRow } from "@/server/queries";
 import { KINDS, type Kind } from "@/lib/filters";
 import { SERIES_SLOTS, SLOT_NAMES } from "@/lib/palette";
@@ -10,7 +10,9 @@ import { Modal } from "./modal";
 import { toast } from "./toast";
 import { Button, CategoryDot, Field, Input, Select } from "./ui";
 
-export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
+export function CategoryManager({ categories: all }: { categories: CategoryRow[] }) {
+  const categories = all.filter((c) => c.saved);
+  const oneTime = all.filter((c) => !c.saved).sort((a, b) => b.txCount - a.txCount || a.name.localeCompare(b.name));
   const [editing, setEditing] = useState<CategoryRow | "new" | null>(null);
   const [removing, setRemoving] = useState<CategoryRow | null>(null);
   const close = useCallback(() => {
@@ -61,6 +63,8 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
           <Plus className="size-4" aria-hidden /> New category
         </Button>
       </div>
+
+      {oneTime.length > 0 && <OneTimeLabels labels={oneTime} />}
 
       <Modal open={editing !== null} onClose={close} title={editing === "new" ? "New category" : "Edit category"} size="sm">
         {editing !== null && (
@@ -181,5 +185,44 @@ function DeleteCategory({ category, others, onDone }: { category: CategoryRow; o
         </Button>
       </div>
     </div>
+  );
+}
+
+/** One-time labels: not in the picker, but can be promoted to saved categories. */
+function OneTimeLabels({ labels }: { labels: CategoryRow[] }) {
+  const [pending, start] = useTransition();
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <details className="group border-t border-line">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-5 py-3 text-sm text-ink-2 hover:bg-surface-2">
+        <ChevronRight className="size-4 transition-transform group-open:rotate-90" aria-hidden />
+        One-time labels <span className="tabular text-muted">({labels.length})</span>
+        <span className="ml-auto hidden text-xs text-muted sm:inline">Not shown in the picker until saved</span>
+      </summary>
+      <ul className="max-h-96 divide-y divide-line overflow-auto border-t border-line">
+        {labels.map((c) => (
+          <li key={c.id} className="flex items-center gap-3 px-5 py-2">
+            <span className="min-w-0 flex-1 truncate text-sm text-ink">{c.name}</span>
+            <span className="tabular text-xs text-muted">{c.txCount}×</span>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setBusy(c.id);
+                start(async () => {
+                  const res = await setCategorySaved(c.id, true);
+                  toast(res.message ?? "Saved", res.ok ? "success" : "error");
+                  setBusy(null);
+                });
+              }}
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-accent hover:bg-accent-soft disabled:opacity-50"
+            >
+              {busy === c.id ? <Loader2 className="size-3.5 animate-spin" aria-hidden /> : <BookmarkPlus className="size-3.5" aria-hidden />}
+              Save as category
+            </button>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

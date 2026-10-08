@@ -15,8 +15,9 @@ has light and dark themes.
 
 ## Features
 
-- **Dashboard.** Shows this month's spent, income, saved and net. It compares your spending with the same point
-  last month, has a quick-add form, a by-category breakdown and your recent transactions.
+- **Dashboard.** Shows your all-time running **balance** (income − spent − saved since your first entry), with
+  total spent, on card, income and saved. It also has a quick-add form, a by-category breakdown and your recent
+  transactions.
 - **Transactions.** Filters (date range, category, type, card only, search) are kept in the URL. Paging and totals
   are done on the server. Tap any row to edit or delete it. You can export the current view as CSV.
 - **Amount formulas.** Type `120+80*2` or `=1500/3` in the amount field. You see a live preview, and the server
@@ -121,7 +122,7 @@ How old data maps to the new app:
 | Old app | New app |
 |---|---|
 | Saved types (the `type` table) | Categories. `Credit` becomes income, `Savings` becomes savings |
-| Free-text "Others" types | The **Others** category, with the old label kept as the note (searchable) |
+| Free-text "Others" types | One-time labels under their own name (not listed in the category picker) |
 | `isCredit = 1` | Paid by card |
 | Rows with amount ≤ 0 | Skipped and listed in the report |
 
@@ -129,16 +130,17 @@ Useful options:
 
 - `--fix-typos` merges known variants, for example Intrest → Interest and CarryForward → Carry forward.
 - `--prune-unused` removes the starter categories that are created on first sign-in, if they're still unused.
-- `--categories all` turns every distinct label into its own category instead of using Others.
+- `--categories all` turns every distinct label into a saved category instead.
 
 Running the import again is safe: rows that were already imported are skipped. You can also import from a
 CSV with `--csv expenses.csv`, or read a live MySQL database with `--mysql <url>`.
 
-### One-time entries
+### Categories and one-time entries
 
-Use **Category → "One-time (don't save as a category)…"** for one-off spends. The entry goes into **Others**,
-and what you type becomes its label, so your category list doesn't grow. If a label keeps recurring, create a
-proper category for it in Settings.
+The **Category** box is type-to-pick. It suggests your saved categories; as you type, it also suggests one-time
+labels you've used before. If you type a new name, it's used **once** by default: the entry keeps that name in
+lists and reports, but your category list doesn't grow. Tick **"Save as a category"** to make it permanent. You
+can also save a one-time label later in **Settings → One-time labels**.
 
 ## Project layout
 

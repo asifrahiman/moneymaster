@@ -37,7 +37,7 @@ async function Settings() {
         <SettingsForm currency={user.currency} timezone={user.timezone} />
       </Card>
       <Card className="overflow-hidden">
-        <CardHeader title="Categories" subtitle="Rename, recolour, change type, or merge by deleting." />
+        <CardHeader title="Categories" subtitle="Saved categories appear in the picker. One-time labels can be saved from the list below." />
         <CategoryManager categories={categories} />
       </Card>
     </div>

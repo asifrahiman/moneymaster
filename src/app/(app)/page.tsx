@@ -4,9 +4,15 @@ import { CategoryBars, StatGrid } from "@/components/stats";
 import { TransactionForm } from "@/components/transaction-form";
 import { TransactionList } from "@/components/transaction-list";
 import { Card, CardHeader, EmptyState, PageHeader, Skeleton } from "@/components/ui";
-import { addMonths, presetRange } from "@/lib/dates";
+import { formatDate } from "@/lib/dates";
 import { requireUser } from "@/server/dal";
-import { categoryBreakdown, getTotals, listCategories, recentTransactions } from "@/server/queries";
+import {
+  categoryBreakdown,
+  firstTransactionDate,
+  getTotals,
+  listCategories,
+  recentTransactions,
+} from "@/server/queries";
 
 export default function DashboardPage() {
   return (
@@ -18,29 +24,23 @@ export default function DashboardPage() {
 
 async function Dashboard() {
   const user = await requireUser();
-  const thisMonth = presetRange("this-month", user.today);
-  // Compare month-to-date with the same span of last month (a fair comparison mid-month).
-  const lastMonthToDate = { from: presetRange("last-month", user.today).from, to: addMonths(user.today, -1) };
-
-  const [categories, totals, previous, breakdown, recent] = await Promise.all([
+  // The dashboard is all-time: a running balance from the very first entry.
+  const [categories, totals, since, breakdown, recent] = await Promise.all([
     listCategories(user.id),
-    getTotals(user.id, thisMonth),
-    getTotals(user.id, lastMonthToDate),
-    categoryBreakdown(user.id, { ...thisMonth, kind: "expense" }),
+    getTotals(user.id, {}),
+    firstTransactionDate(user.id),
+    categoryBreakdown(user.id, { kind: "expense" }),
     recentTransactions(user.id, 8),
   ]);
 
   const firstName = user.name?.split(" ")[0];
-  const monthName = new Intl.DateTimeFormat("en", { month: "long", timeZone: "UTC" }).format(
-    new Date(`${user.today}T00:00:00Z`),
-  );
 
   return (
     <>
-      <PageHeader title={firstName ? `Hi, ${firstName}` : "Dashboard"} description={`Here's ${monthName} so far.`} />
+      <PageHeader title={firstName ? `Hi, ${firstName}` : "Dashboard"} description={since ? `All-time, since ${formatDate(since)}.` : "Add your first transaction below."} />
 
       <div className="flex flex-col gap-6">
-        <StatGrid totals={totals} previous={previous} currency={user.currency} />
+        <StatGrid totals={totals} currency={user.currency} balance={{ since }} />
 
         <div className="grid gap-6 lg:grid-cols-5">
           <Card className="lg:col-span-3">
@@ -53,7 +53,7 @@ async function Dashboard() {
           <Card className="lg:col-span-2">
             <CardHeader
               title="Where it went"
-              subtitle={`${monthName} spending by category`}
+              subtitle="All-time spending by category"
               action={
                 <Link href="/reports" className="text-xs font-medium text-accent hover:underline">
                   Report
@@ -63,7 +63,7 @@ async function Dashboard() {
             {breakdown.length ? (
               <CategoryBars rows={breakdown} total={totals.spent} currency={user.currency} />
             ) : (
-              <EmptyState title="No spending yet this month" />
+              <EmptyState title="No spending yet" />
             )}
           </Card>
         </div>

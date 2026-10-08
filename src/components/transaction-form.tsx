@@ -5,8 +5,9 @@ import { useActionState, useId, useRef, useState } from "react";
 import { saveTransaction, type ActionState } from "@/server/actions";
 import type { CategoryRow, TxRow } from "@/server/queries";
 import { isFormula, parseAmount } from "@/lib/amount";
-import { isOneOffCategory, KINDS, NEW_CATEGORY, ONE_OFF, type Kind } from "@/lib/filters";
+import { KINDS, type Kind } from "@/lib/filters";
 import { formatMoney } from "@/lib/format";
+import { CategoryCombobox } from "./category-combobox";
 import { Button, Field, Input, Select } from "./ui";
 import { toast } from "./toast";
 
@@ -19,14 +20,12 @@ type Props = {
   submitLabel?: string;
 };
 
+const norm = (s: string) => s.replace(/\s+/g, " ").trim().toLowerCase();
+
 export function TransactionForm({ categories, today, currency, transaction, onDone, submitLabel }: Props) {
   const uid = useId();
-  // The catch-all "Others" category isn't listed; it's reached through the "One-time…" option.
-  const listed = categories.filter((c) => !isOneOffCategory(c.name));
-  const [categoryId, setCategoryId] = useState(
-    transaction ? (isOneOffCategory(transaction.categoryName) ? ONE_OFF : transaction.categoryId) : "",
-  );
-  const [newName, setNewName] = useState("");
+  const [category, setCategory] = useState(transaction?.categoryName ?? "");
+  const [saveAsCategory, setSaveAsCategory] = useState(false);
   const [newKind, setNewKind] = useState<Kind>("expense");
   const [amount, setAmount] = useState(transaction ? String(Number(transaction.amount)) : "");
   const [date, setDate] = useState(transaction?.occurredOn ?? today);
@@ -43,10 +42,9 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
       if (!transaction) {
         setAmount("");
         setNote("");
-        setNewName("");
         setCard(false);
-        if (categoryId === NEW_CATEGORY || categoryId === ONE_OFF) setCategoryId("");
-        amountRef.current?.focus();
+        setSaveAsCategory(false);
+        setCategory("");
       }
       onDone?.();
     } else if (res.message) {
@@ -57,44 +55,28 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
 
   const err = state.ok ? undefined : state.fieldErrors;
   const preview = amount && isFormula(amount) ? parseAmount(amount) : null;
-  const oneOff = categoryId === ONE_OFF;
-  const selectedKind =
-    categoryId === NEW_CATEGORY ? newKind : categories.find((c) => c.id === categoryId)?.kind ?? "expense";
+  const match = categories.find((c) => c.name.toLowerCase() === norm(category));
+  const isNew = !!norm(category) && !match;
+  const kind = match ? match.kind : newKind;
   const id = (name: string) => `${uid}-${name}`;
+
+  let categoryHint: React.ReactNode = "Pick a saved category or type anything.";
+  if (match?.saved) categoryHint = `${KINDS.find((k) => k.value === match.kind)!.label} category`;
+  else if (match) categoryHint = `One-time · used ${match.txCount}× before`;
+  else if (isNew) categoryHint = saveAsCategory ? "New category" : "One-time — won’t be added to your category list";
 
   return (
     <form action={action} className="grid grid-cols-1 gap-4 sm:grid-cols-2" noValidate>
       {transaction && <input type="hidden" name="id" value={transaction.id} />}
 
-      <Field label="Category" htmlFor={id("category")} error={err?.categoryId}>
-        <Select
+      <Field label="Category" htmlFor={id("category")} error={err?.category} hint={categoryHint}>
+        <CategoryCombobox
           id={id("category")}
-          name="categoryId"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          aria-invalid={!!err?.categoryId}
-          required
-        >
-          <option value="" disabled>
-            Choose…
-          </option>
-          {KINDS.map((k) => {
-            const items = listed.filter((c) => c.kind === k.value);
-            return items.length ? (
-              <optgroup key={k.value} label={k.label}>
-                {items.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null;
-          })}
-          <optgroup label="Other">
-            <option value={ONE_OFF}>One-time (don&apos;t save as a category)…</option>
-            <option value={NEW_CATEGORY}>+ New category…</option>
-          </optgroup>
-        </Select>
+          categories={categories}
+          value={category}
+          onChange={setCategory}
+          invalid={!!err?.category}
+        />
       </Field>
 
       <Field
@@ -128,33 +110,36 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
         />
       </Field>
 
-      {categoryId === NEW_CATEGORY && (
-        <div className="grid grid-cols-2 gap-4 sm:col-span-2">
-          <Field label="New category name" htmlFor={id("newName")} error={err?.newCategoryName}>
-            <Input
-              id={id("newName")}
-              name="newCategoryName"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              maxLength={40}
-              autoFocus
-              aria-invalid={!!err?.newCategoryName}
+      {(isNew || (match && !match.saved)) && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-surface-2 px-3 py-2.5 text-sm sm:col-span-2">
+          <label className="flex cursor-pointer items-center gap-2 text-ink">
+            <input
+              type="checkbox"
+              name="saveCategory"
+              checked={saveAsCategory}
+              onChange={(e) => setSaveAsCategory(e.target.checked)}
+              className="size-4 accent-[var(--accent)]"
             />
-          </Field>
-          <Field label="Type" htmlFor={id("newKind")}>
-            <Select
-              id={id("newKind")}
-              name="newCategoryKind"
-              value={newKind}
-              onChange={(e) => setNewKind(e.target.value as Kind)}
-            >
-              {KINDS.map((k) => (
-                <option key={k.value} value={k.value}>
-                  {k.label}
-                </option>
-              ))}
-            </Select>
-          </Field>
+            Save “{category.trim()}” as a category
+          </label>
+          {isNew && (
+            <label className="flex items-center gap-2 text-ink-2">
+              Type
+              <Select
+                name="categoryKind"
+                value={newKind}
+                onChange={(e) => setNewKind(e.target.value as Kind)}
+                className="h-8 w-auto py-0 text-sm"
+                aria-label="Type"
+              >
+                {KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </Select>
+            </label>
+          )}
         </div>
       )}
 
@@ -171,29 +156,19 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
         />
       </Field>
 
-      <Field
-        label={oneOff ? "What was it?" : "Note (optional)"}
-        htmlFor={id("note")}
-        error={err?.note}
-        hint={oneOff ? "Saved under “Others” — your category list stays the same." : undefined}
-      >
+      <Field label="Note (optional)" htmlFor={id("note")}>
         <Input
           id={id("note")}
           name="note"
           value={note}
           maxLength={200}
-          placeholder={oneOff ? "e.g. Washing machine repair" : "e.g. Dinner with Sam"}
+          placeholder="e.g. Dinner with Sam"
           onChange={(e) => setNote(e.target.value)}
-          aria-invalid={!!err?.note}
-          autoFocus={oneOff && !transaction}
-          required={oneOff}
         />
       </Field>
 
       <div className="flex flex-wrap items-center justify-between gap-3 sm:col-span-2">
-        <label
-          className={`flex cursor-pointer items-center gap-2.5 text-sm ${selectedKind === "expense" ? "text-ink" : "text-muted"}`}
-        >
+        <label className={`flex cursor-pointer items-center gap-2.5 text-sm ${kind === "expense" ? "text-ink" : "text-muted"}`}>
           <input
             type="checkbox"
             name="paidByCard"

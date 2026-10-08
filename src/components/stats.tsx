@@ -1,5 +1,6 @@
 import { ArrowDownRight, ArrowUpRight, CreditCard } from "lucide-react";
 import type { Totals } from "@/server/queries";
+import { formatDate } from "@/lib/dates";
 import { formatMoney, formatPercent } from "@/lib/format";
 import { CategoryDot } from "./ui";
 
@@ -7,13 +8,26 @@ function Stat({ label, value, sub, emphasis }: { label: string; value: string; s
   return (
     <div className="rounded-2xl border border-line bg-surface px-4 py-3.5 md:px-5 md:py-4">
       <p className="text-xs font-medium text-muted">{label}</p>
-      <p className={`mt-1 truncate text-xl font-semibold tracking-tight md:text-2xl ${emphasis ?? "text-ink"}`}>{value}</p>
+      <p className={`tabular mt-1 truncate text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl ${emphasis ?? "text-ink"}`} title={value}>
+        {value}
+      </p>
       {sub ? <div className="mt-1 text-xs text-ink-2">{sub}</div> : null}
     </div>
   );
 }
 
-export function StatGrid({ totals, previous, currency }: { totals: Totals; previous?: Totals; currency: string }) {
+export function StatGrid({
+  totals,
+  previous,
+  currency,
+  balance,
+}: {
+  totals: Totals;
+  previous?: Totals;
+  currency: string;
+  /** Show the running balance first (all-time view) instead of "Net" last. */
+  balance?: { since: string | null };
+}) {
   let delta: React.ReactNode = null;
   if (previous && previous.spent > 0) {
     const change = (totals.spent - previous.spent) / previous.spent;
@@ -25,28 +39,35 @@ export function StatGrid({ totals, previous, currency }: { totals: Totals; previ
       </span>
     );
   }
+  // Whole rupees in the tiles so large all-time totals fit on a phone.
+  const money = (v: number) => formatMoney(v, currency, { whole: true });
+  const netValue = `${totals.net < 0 ? "−" : ""}${money(Math.abs(totals.net))}`;
+  const net = (
+    <Stat
+      label={balance ? "Balance" : "Net"}
+      value={netValue}
+      emphasis={totals.net < 0 ? "text-negative" : "text-ink"}
+      sub={balance ? `Income − spent − saved${balance.since ? ` since ${formatDate(balance.since)}` : ""}` : "Income − spent − saved"}
+    />
+  );
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {balance && net}
       <Stat
         label="Spent"
-        value={formatMoney(totals.spent, currency)}
+        value={money(totals.spent)}
         sub={
           <>
             <span className="flex items-center gap-1">
-              <CreditCard className="size-3.5 shrink-0" aria-hidden /> {formatMoney(totals.card, currency)} on card
+              <CreditCard className="size-3.5 shrink-0" aria-hidden /> {money(totals.card)} on card
             </span>
             {delta && <span className="mt-0.5 block text-muted">{delta}</span>}
           </>
         }
       />
-      <Stat label="Income" value={formatMoney(totals.income, currency)} />
-      <Stat label="Saved" value={formatMoney(totals.saved, currency)} />
-      <Stat
-        label="Net"
-        value={`${totals.net < 0 ? "−" : ""}${formatMoney(Math.abs(totals.net), currency)}`}
-        emphasis={totals.net < 0 ? "text-negative" : "text-ink"}
-        sub="Income − spent − saved"
-      />
+      <Stat label="Income" value={money(totals.income)} />
+      <Stat label="Saved" value={money(totals.saved)} />
+      {!balance && net}
     </div>
   );
 }

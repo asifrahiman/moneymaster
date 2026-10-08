@@ -106,18 +106,19 @@ export function cleanLabel(raw: string, fixTypos: boolean): string {
 }
 
 export type Plan = {
-  /** Categories to create (in order), with their type. */
-  categories: { name: string; kind: CategoryKind; uses: number }[];
-  /** For each original legacy label: target category name and the note to keep (if any). */
-  labels: Map<string, { category: string; note: string | null }>;
+  /** Categories to create (in order): saved ones appear in the picker, the rest are one-time labels. */
+  categories: { name: string; kind: CategoryKind; uses: number; saved: boolean }[];
+  /** Original legacy label → target category name. */
+  labels: Map<string, string>;
 };
 
 /**
  * Decides which categories to create and where each legacy label goes.
  *
- * mode "saved": the legacy `type` table (+ income/savings types) become categories;
- *               every other free-text label goes to `othersName`, keeping the label as the note.
- * mode "all":   every distinct label becomes its own category.
+ * mode "saved": the legacy `type` table (+ income/savings types) become saved categories;
+ *               every other free-text label becomes a one-time label (kept under its own name,
+ *               but not shown in the category picker).
+ * mode "all":   every distinct label becomes a saved category.
  */
 export function planCategories(opts: {
   labels: string[]; // one per row (duplicates expected)
@@ -125,62 +126,57 @@ export function planCategories(opts: {
   mode: "saved" | "all";
   incomeTypes: string[];
   savingsTypes: string[];
-  othersName: string;
   fixTypos: boolean;
 }): Plan {
   const lc = (s: string) => s.toLowerCase();
-  const income = new Set(opts.incomeTypes.map((t) => lc(cleanLabel(t, opts.fixTypos))));
-  const savings = new Set(opts.savingsTypes.map((t) => lc(cleanLabel(t, opts.fixTypos))));
+  const clean = (s: string) => cleanLabel(s, opts.fixTypos);
+  const income = new Set(opts.incomeTypes.map((t) => lc(clean(t))));
+  const savings = new Set(opts.savingsTypes.map((t) => lc(clean(t))));
   const kindOf = (name: string): CategoryKind =>
     income.has(lc(name)) ? "income" : savings.has(lc(name)) ? "savings" : "expense";
 
   // Canonical spelling per case-insensitive label: the saved-type spelling, else the most used one.
   const counts = new Map<string, Map<string, number>>();
   for (const raw of opts.labels) {
-    const c = cleanLabel(raw, opts.fixTypos);
+    const c = clean(raw);
     if (!c) continue;
     const spellings = counts.get(lc(c)) ?? new Map<string, number>();
     spellings.set(c, (spellings.get(c) ?? 0) + 1);
     counts.set(lc(c), spellings);
   }
   const canonical = new Map<string, string>();
+  const uses = new Map<string, number>();
   for (const [key, spellings] of counts) {
     canonical.set(key, [...spellings].sort((a, b) => b[1] - a[1])[0][0]);
+    uses.set(key, [...spellings.values()].reduce((a, b) => a + b, 0));
   }
+  const savedKeys = new Set<string>();
   for (const t of opts.savedTypes) {
-    const c = cleanLabel(t, opts.fixTypos);
-    if (c) canonical.set(lc(c), c);
+    const c = clean(t);
+    if (!c) continue;
+    canonical.set(lc(c), c);
+    savedKeys.add(lc(c));
   }
+  for (const key of counts.keys()) if (opts.mode === "all" || income.has(key) || savings.has(key)) savedKeys.add(key);
 
-  const isCategory = new Set<string>();
-  if (opts.mode === "all") for (const key of counts.keys()) isCategory.add(key);
-  else {
-    for (const t of opts.savedTypes) isCategory.add(lc(cleanLabel(t, opts.fixTypos)));
-    for (const key of counts.keys()) if (income.has(key) || savings.has(key)) isCategory.add(key);
-  }
-  isCategory.delete("");
-
-  const uses = new Map<string, number>();
   const labels: Plan["labels"] = new Map();
   for (const raw of new Set(opts.labels)) {
-    const key = lc(cleanLabel(raw, opts.fixTypos));
-    if (!key) continue;
-    const target = isCategory.has(key) ? canonical.get(key)! : opts.othersName;
-    labels.set(raw, { category: target, note: isCategory.has(key) ? null : canonical.get(key)!.slice(0, 200) });
-  }
-  for (const raw of opts.labels) {
-    const t = labels.get(raw);
-    if (t) uses.set(t.category, (uses.get(t.category) ?? 0) + 1);
+    const key = lc(clean(raw));
+    if (key) labels.set(raw, canonical.get(key)!.slice(0, 60));
   }
 
-  const names = [...isCategory].map((k) => canonical.get(k)!);
-  if ([...labels.values()].some((l) => l.category === opts.othersName) && !names.some((n) => lc(n) === lc(opts.othersName)))
-    names.push(opts.othersName);
-
-  const categories = names
-    .map((name) => ({ name: name.slice(0, 40), kind: kindOf(name), uses: uses.get(name) ?? 0 }))
-    // Most-used expense categories first so they get distinct colours.
-    .sort((a, b) => Number(a.kind !== "expense") - Number(b.kind !== "expense") || b.uses - a.uses);
+  const categories = [...canonical.keys()]
+    .map((key) => {
+      const name = canonical.get(key)!.slice(0, 60);
+      return { name, kind: kindOf(name), uses: uses.get(key) ?? 0, saved: savedKeys.has(key) };
+    })
+    // Saved, most-used expense categories first so they get distinct colours.
+    .sort(
+      (a, b) =>
+        Number(b.saved) - Number(a.saved) ||
+        Number(a.kind !== "expense") - Number(b.kind !== "expense") ||
+        b.uses - a.uses,
+    );
   return { categories, labels };
 }
 

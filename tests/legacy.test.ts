@@ -29,22 +29,27 @@ describe("legacy SQL dump", () => {
 
 describe("planCategories", () => {
   const labels = readSqlDump(dump).expenses.map((e) => e.type);
-  const base = { labels, incomeTypes: ["Credit"], savingsTypes: ["Savings"], othersName: "Others" };
+  const base = { labels, incomeTypes: ["Credit"], savingsTypes: ["Savings"] };
 
-  it("saved mode: saved types + income/savings become categories, the rest go to Others with a note", () => {
+  it("saved mode: saved types + income/savings are saved categories; free text becomes one-time labels", () => {
     const plan = planCategories({ ...base, savedTypes: ["Food", "Credit", "Intrest"], mode: "saved", fixTypos: true });
-    expect(plan.categories.map((c) => `${c.name}:${c.kind}`).sort()).toEqual(
-      ["Credit:income", "Food:expense", "Interest:expense", "Others:expense", "Savings:savings"].sort(),
-    );
-    expect(plan.labels.get("Kada- steel")).toEqual({ category: "Others", note: "Kada - steel" });
-    expect(plan.labels.get("Food")).toEqual({ category: "Food", note: null });
-    expect(plan.labels.get("Intrest")).toEqual({ category: "Interest", note: null });
+    const byName = Object.fromEntries(plan.categories.map((c) => [c.name, `${c.kind}:${c.saved ? "saved" : "once"}`]));
+    expect(byName).toEqual({
+      Food: "expense:saved",
+      Interest: "expense:saved",
+      Credit: "income:saved",
+      Savings: "savings:saved",
+      "Kada - steel": "expense:once",
+      "It's 'quoted', ok": "expense:once",
+    });
+    expect(plan.labels.get("Kada- steel")).toBe("Kada - steel");
+    expect(plan.labels.get("Intrest")).toBe("Interest");
   });
 
-  it("all mode: every label is a category", () => {
+  it("all mode: every label is a saved category", () => {
     const plan = planCategories({ ...base, savedTypes: [], mode: "all", fixTypos: false });
     expect(plan.categories).toHaveLength(6);
-    expect(plan.categories.some((c) => c.name === "Others")).toBe(false);
+    expect(plan.categories.every((c) => c.saved)).toBe(true);
   });
 
   it("cleans whitespace, dash spacing and known typos", () => {

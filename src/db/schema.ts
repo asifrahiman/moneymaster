@@ -41,6 +41,12 @@ export const categories = pgTable(
     name: text("name").notNull(),
     kind: categoryKind("kind").notNull().default("expense"),
     color: text("color").notNull(),
+    /**
+     * Saved categories appear in the category picker and Settings. Unsaved ones are
+     * one-time labels: created on the fly when you type a new name and choose
+     * "use once" (and for free-text types imported from the old app).
+     */
+    saved: boolean("saved").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

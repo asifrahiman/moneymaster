@@ -11,6 +11,9 @@ describe("formatMoney", () => {
     expect(formatMoney(31000000, "INR", { compact: true })).toBe("₹3.1Cr");
     expect(formatMoney(0, "INR", { compact: true })).toBe("₹0");
   });
+  it("can drop paise for summary tiles", () => {
+    expect(formatMoney(11631856.9, "INR", { whole: true })).toBe("₹1,16,31,857");
+  });
   it("formats other currencies", () => {
     expect(formatMoney(1234.5, "USD")).toBe("$1,234.50");
   });

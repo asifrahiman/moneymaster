@@ -65,11 +65,24 @@ export function FilterBar({ filters, categories, show = { category: true, kind: 
             className="sm:w-48"
           >
             <option value="">All categories</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
+            {categories
+              .filter((c) => c.saved)
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            {categories.some((c) => !c.saved) && (
+              <optgroup label="One-time labels">
+                {categories
+                  .filter((c) => !c.saved)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </optgroup>
+            )}
           </Select>
         )}
 

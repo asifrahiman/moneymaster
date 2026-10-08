@@ -43,6 +43,15 @@ function toTotals(r: { spent: string; income: string; saved: string; card: strin
   return { spent, income, saved, card: Number(r.card), net, count: Number(r.count) };
 }
 
+/** Date of the first transaction (the start of the all-time balance), or null. */
+export async function firstTransactionDate(userId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ first: sql<string | null>`min(${transactions.occurredOn})` })
+    .from(transactions)
+    .where(eq(transactions.userId, userId));
+  return row?.first ?? null;
+}
+
 export async function getTotals(userId: string, f: Partial<TxFilters>): Promise<Totals> {
   const [row] = await db
     .select(totalsSelect)
@@ -57,6 +66,8 @@ export type CategoryRow = {
   name: string;
   kind: Kind;
   color: string;
+  /** false = one-time label (not shown in the picker). */
+  saved: boolean;
   txCount: number;
 };
 
@@ -67,13 +78,14 @@ export async function listCategories(userId: string): Promise<CategoryRow[]> {
       name: categories.name,
       kind: categories.kind,
       color: categories.color,
+      saved: categories.saved,
       txCount: sql<number>`count(${transactions.id})::int`,
     })
     .from(categories)
     .leftJoin(transactions, eq(transactions.categoryId, categories.id))
     .where(eq(categories.userId, userId))
     .groupBy(categories.id)
-    .orderBy(asc(categories.kind), asc(sql`lower(${categories.name})`));
+    .orderBy(desc(categories.saved), asc(categories.kind), asc(sql`lower(${categories.name})`));
   return rows;
 }
 

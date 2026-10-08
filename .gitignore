@@ -47,3 +47,5 @@ next-env.d.ts
 # Legacy database dumps (personal data)
 *.sql
 *.sql.zip
+# …but database migrations must be committed
+!drizzle/*.sql

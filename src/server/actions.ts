@@ -8,7 +8,6 @@ import { db } from "@/db";
 import { categories, transactions, users } from "@/db/schema";
 import { parseAmount } from "@/lib/amount";
 import { isIsoDate } from "@/lib/dates";
-import { NEW_CATEGORY, ONE_OFF, ONE_OFF_CATEGORY } from "@/lib/filters";
 import { CURRENCIES } from "@/lib/format";
 import { isSlot, nextSlot } from "@/lib/palette";
 import { requireUser } from "./dal";
@@ -26,7 +25,7 @@ const nameSchema = z
   .string()
   .trim()
   .min(1, "Name is required")
-  .max(40, "Keep it under 40 characters");
+  .max(60, "Keep it under 60 characters");
 
 function fail(fieldErrors: Record<string, string>, message?: string): ActionState {
   return { ok: false, fieldErrors, message };
@@ -49,51 +48,44 @@ export async function saveTransaction(_prev: ActionState, form: FormData): Promi
   const occurredOn = String(form.get("occurredOn") ?? "");
   const paidByCard = form.get("paidByCard") === "on";
   const note = String(form.get("note") ?? "").trim().slice(0, 200) || null;
-  let categoryId = String(form.get("categoryId") ?? "");
+  // The category is chosen by name: an existing category (saved or one-time) is reused;
+  // a new name becomes a one-time label unless "save as category" is ticked.
+  const categoryName = nameSchema.safeParse(String(form.get("category") ?? "").replace(/\s+/g, " "));
+  const saveAsCategory = form.get("saveCategory") === "on";
+  const kind = kindSchema.safeParse(form.get("categoryKind") ?? "expense");
 
   const errors: Record<string, string> = {};
   const amount = parseAmount(amountRaw);
   if (!amount.ok) errors.amount = amount.error;
   if (!isIsoDate(occurredOn)) errors.occurredOn = "Pick a valid date";
-  if (!categoryId) errors.categoryId = "Choose a category";
-
-  let newCategory: { name: string; kind: z.infer<typeof kindSchema> } | null = null;
-  if (categoryId === ONE_OFF) {
-    // One-time entry: goes to the catch-all category, described by its note.
-    if (!note) errors.note = "Say what it was";
-    newCategory = { name: ONE_OFF_CATEGORY, kind: "expense" };
-  } else if (categoryId === NEW_CATEGORY) {
-    const name = nameSchema.safeParse(form.get("newCategoryName") ?? "");
-    const kind = kindSchema.safeParse(form.get("newCategoryKind") ?? "expense");
-    if (!name.success) errors.newCategoryName = name.error.issues[0].message;
-    else newCategory = { name: name.data, kind: kind.success ? kind.data : "expense" };
-  } else if (categoryId && !z.uuid().safeParse(categoryId).success) {
-    errors.categoryId = "Choose a category";
-  }
-  if (Object.keys(errors).length || !amount.ok) return fail(errors);
+  if (!categoryName.success) errors.category = categoryName.error.issues[0].message;
+  if (Object.keys(errors).length || !amount.ok || !categoryName.success) return fail(errors);
+  const name = categoryName.data;
 
   try {
     await db.transaction(async (tx) => {
-      if (newCategory) {
-        // Re-use an existing category with the same name (case-insensitive).
-        const existing = await tx.query.categories.findFirst({
-          where: and(eq(categories.userId, user.id), sql`lower(${categories.name}) = lower(${newCategory.name})`),
-        });
-        if (existing) categoryId = existing.id;
-        else {
-          const used = await tx.select({ color: categories.color }).from(categories).where(eq(categories.userId, user.id));
-          const [created] = await tx
-            .insert(categories)
-            .values({ userId: user.id, ...newCategory, color: nextSlot(used.map((u) => u.color)) })
-            .returning({ id: categories.id });
-          categoryId = created.id;
+      let categoryId: string;
+      const existing = await tx.query.categories.findFirst({
+        where: and(eq(categories.userId, user.id), sql`lower(${categories.name}) = lower(${name})`),
+      });
+      if (existing) {
+        categoryId = existing.id;
+        if (saveAsCategory && !existing.saved) {
+          await tx.update(categories).set({ saved: true }).where(eq(categories.id, existing.id));
         }
       } else {
-        const owned = await tx.query.categories.findFirst({
-          where: and(eq(categories.id, categoryId), eq(categories.userId, user.id)),
-          columns: { id: true },
-        });
-        if (!owned) throw new FieldError("categoryId", "Choose a category");
+        const used = await tx.select({ color: categories.color }).from(categories).where(eq(categories.userId, user.id));
+        const [created] = await tx
+          .insert(categories)
+          .values({
+            userId: user.id,
+            name,
+            kind: kind.success ? kind.data : "expense",
+            saved: saveAsCategory,
+            color: nextSlot(used.map((u) => u.color)),
+          })
+          .returning({ id: categories.id });
+        categoryId = created.id;
       }
 
       const values = { categoryId, amount: amount.value.toFixed(2), occurredOn, paidByCard, note };
@@ -175,6 +167,24 @@ export async function saveCategory(_prev: ActionState, form: FormData): Promise<
 
   refresh();
   return { ok: true, message: id ? "Category updated" : "Category added", at: Date.now() };
+}
+
+/** Turns a one-time label into a saved category (or back). */
+export async function setCategorySaved(id: string, saved: boolean): Promise<ActionState> {
+  const user = await requireUser();
+  if (!z.uuid().safeParse(id).success) return { ok: false, message: "Invalid id" };
+  const updated = await db
+    .update(categories)
+    .set({ saved })
+    .where(and(eq(categories.id, id), eq(categories.userId, user.id)))
+    .returning({ name: categories.name });
+  if (!updated.length) return { ok: false, message: "That category no longer exists" };
+  refresh();
+  return {
+    ok: true,
+    message: saved ? `“${updated[0].name}” saved as a category` : `“${updated[0].name}” is now one-time`,
+    at: Date.now(),
+  };
 }
 
 /**

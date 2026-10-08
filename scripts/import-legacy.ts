@@ -19,10 +19,9 @@
  *
  * Categories:
  *   --categories saved         (default when the `type` table is available) your saved types become
- *                              categories; free-text "Others" labels go to one "Others" category and
- *                              the label is kept as the transaction note.
- *   --categories all           every distinct label becomes its own category.
- *   --others-name Others       name of the catch-all category (default: Others)
+ *                              categories; free-text "Others" labels become one-time labels (kept under
+ *                              their own name, but not listed in the category picker).
+ *   --categories all           every distinct label becomes a saved category.
  *   --fix-typos                merge known misspellings/variants (Intrest→Interest, CarryForward→Carry forward …)
  *   --income-types Credit      legacy types to import as Income (default: Credit)
  *   --savings-types Savings    legacy types to import as Savings (default: Savings)
@@ -63,7 +62,6 @@ const { values: args } = parseArgs({
     "income-types": { type: "string", default: "Credit" },
     "savings-types": { type: "string", default: "Savings" },
     categories: { type: "string" },
-    "others-name": { type: "string", default: "Others" },
     "fix-typos": { type: "boolean", default: false },
     "prune-unused": { type: "boolean", default: false },
     "dry-run": { type: "boolean", default: false },
@@ -180,11 +178,10 @@ async function main() {
         mode,
         incomeTypes: list(args["income-types"]!),
         savingsTypes: list(args["savings-types"]!),
-        othersName: args["others-name"]!,
         fixTypos: args["fix-typos"]!,
       });
 
-      const valid: { row: LegacyRow; date: string; amount: string; category: string; note: string | null }[] = [];
+      const valid: { row: LegacyRow; date: string; amount: string; category: string }[] = [];
       for (const row of userRows) {
         const date = parseLegacyDate(String(row.date));
         const amount = parseLegacyAmount(row.amount);
@@ -193,11 +190,15 @@ async function main() {
         else if (!date) report.skipped.push(`#${row.id}: bad date "${row.date}"`);
         else if (!amount) report.skipped.push(`#${row.id}: amount "${row.amount}" (${row.type}) is not positive`);
         else if (!target) report.skipped.push(`#${row.id}: empty type`);
-        else valid.push({ row, date, amount, category: target.category, note: target.note });
+        else valid.push({ row, date, amount, category: target });
       }
 
-      console.log(`\n  ${legacyUser}: ${plan.categories.length} categories`);
-      for (const c of plan.categories) console.log(`     ${c.name.padEnd(24)} ${c.kind.padEnd(8)} ${c.uses} rows`);
+      const saved = plan.categories.filter((c) => c.saved);
+      const oneTime = plan.categories.filter((c) => !c.saved);
+      console.log(`\n  ${legacyUser}: ${saved.length} categories, ${oneTime.length} one-time labels`);
+      for (const c of saved) console.log(`     ${c.name.padEnd(24)} ${c.kind.padEnd(8)} ${c.uses} rows`);
+      if (oneTime.length)
+        console.log(`     one-time: ${oneTime.slice(0, 8).map((c) => `${c.name} (${c.uses})`).join(", ")}${oneTime.length > 8 ? ", …" : ""}`);
       if (dryRun) {
         report.inserted = valid.length;
         continue;
@@ -216,13 +217,20 @@ async function main() {
         // Categories: reuse by case-insensitive name, create the rest (all saved types, even unused).
         const existing = await tx.select().from(categories).where(eq(categories.userId, user.id));
         const catIds = new Map(existing.map((c) => [c.name.toLowerCase(), c.id]));
+        const existingSaved = new Map(existing.map((c) => [c.name.toLowerCase(), c.saved]));
         const usedColors = existing.map((c) => c.color);
-        for (const { name, kind } of plan.categories) {
-          if (catIds.has(name.toLowerCase())) continue;
+        for (const { name, kind, saved } of plan.categories) {
+          const key = name.toLowerCase();
+          if (catIds.has(key)) {
+            // An existing one-time label that the old app had saved: promote it.
+            if (saved && existingSaved.get(key) === false)
+              await tx.update(categories).set({ saved: true }).where(eq(categories.id, catIds.get(key)!));
+            continue;
+          }
           const color = nextSlot(usedColors);
           usedColors.push(color);
-          const [c] = await tx.insert(categories).values({ userId: user.id, name, kind, color }).returning();
-          catIds.set(name.toLowerCase(), c.id);
+          const [c] = await tx.insert(categories).values({ userId: user.id, name, kind, color, saved }).returning();
+          catIds.set(key, c.id);
         }
 
         // Insert in batches; already-imported legacy ids are skipped.
@@ -236,7 +244,6 @@ async function main() {
                 categoryId: catIds.get(v.category.toLowerCase())!,
                 amount: v.amount,
                 occurredOn: v.date,
-                note: v.note,
                 paidByCard: ["1", "true"].includes(String(v.row.isCredit).trim().toLowerCase()),
                 legacyId: Number(v.row.id),
               })),
