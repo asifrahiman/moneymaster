@@ -13,6 +13,8 @@ import { FilterControls, type FilterValue } from "./filter-controls";
 import { StatGrid } from "./stats";
 import { buttonClass, Card, CardHeader, CategoryDot, EmptyState, Select } from "./ui";
 
+const VISIBLE_ROWS = 15;
+
 type SortBy = "total" | "name" | "count";
 type Sort = { by: SortBy; dir: "asc" | "desc" };
 
@@ -234,42 +236,58 @@ function BreakdownTable({
   currency: string;
   linkFor: (categoryId: string) => string;
 }) {
+  // Long lists scroll inside the card (about 15 rows visible) with the header and
+  // total pinned, so the page itself doesn't have to scroll.
+  const scrolls = rows.length > VISIBLE_ROWS;
   return (
-    <table className="w-full text-sm [&+table]:border-t [&+table]:border-line">
-      <caption className="px-5 pt-4 pb-2 text-left text-sm font-semibold text-ink">{title}</caption>
-      <thead>
-        <tr className="text-xs text-muted">
-          <SortHeader label="Category" by="name" sort={sort} onSort={onSort} align="left" className="px-5" />
-          <SortHeader label="Count" by="count" sort={sort} onSort={onSort} className="hidden px-3 sm:table-cell" />
-          <th scope="col" className="px-3 py-2 text-right font-medium">
-            Share
-          </th>
-          <SortHeader label="Total" by="total" sort={sort} onSort={onSort} className="px-5" />
-        </tr>
-      </thead>
-      <tbody className="divide-y divide-line border-t border-line">
-        {rows.map((r) => (
-          <tr key={r.categoryId} className="hover:bg-surface-2">
-            <td className="px-5 py-2.5">
-              <Link href={linkFor(r.categoryId)} className="flex items-center gap-2 text-ink hover:underline">
-                <CategoryDot color={r.color} />
-                {r.name}
-              </Link>
-            </td>
-            <td className="tabular hidden px-3 py-2.5 text-right text-ink-2 sm:table-cell">{r.count}</td>
-            <td className="tabular px-3 py-2.5 text-right text-ink-2">{formatPercent(sum ? r.total / sum : 0)}</td>
-            <td className="tabular px-5 py-2.5 text-right font-medium text-ink">{formatMoney(r.total, currency)}</td>
-          </tr>
-        ))}
-      </tbody>
-      <tfoot>
-        <tr className="border-t border-line-strong font-semibold">
-          <td className="px-5 py-2.5">Total</td>
-          <td className="hidden sm:table-cell" />
-          <td />
-          <td className="tabular px-5 py-2.5 text-right">{formatMoney(sum, currency)}</td>
-        </tr>
-      </tfoot>
-    </table>
+    <section className="[&+section]:border-t [&+section]:border-line">
+      <h3 className="flex items-baseline justify-between px-5 pt-4 pb-2 text-sm font-semibold text-ink">
+        {title}
+        {scrolls && <span className="text-xs font-normal text-muted">{rows.length} categories · scroll for more</span>}
+      </h3>
+      <div
+        className={scrolls ? "max-h-[min(43rem,80vh)] overflow-y-auto overscroll-contain" : undefined}
+        tabIndex={scrolls ? 0 : undefined}
+        aria-label={scrolls ? `${title} categories` : undefined}
+        role={scrolls ? "region" : undefined}
+      >
+        <table className="w-full border-separate border-spacing-0 text-sm">
+          <caption className="sr-only">{title}</caption>
+          <thead className="sticky top-0 z-10 bg-surface shadow-[inset_0_-1px_0_var(--line)]">
+            <tr className="text-xs text-muted">
+              <SortHeader label="Category" by="name" sort={sort} onSort={onSort} align="left" className="px-5" />
+              <SortHeader label="Count" by="count" sort={sort} onSort={onSort} className="hidden px-3 sm:table-cell" />
+              <th scope="col" className="px-3 py-2 text-right font-medium">
+                Share
+              </th>
+              <SortHeader label="Total" by="total" sort={sort} onSort={onSort} className="px-5" />
+            </tr>
+          </thead>
+          <tbody className="[&>tr+tr>td]:border-t [&>tr+tr>td]:border-line">
+            {rows.map((r) => (
+              <tr key={r.categoryId} className="hover:bg-surface-2">
+                <td className="px-5 py-2.5">
+                  <Link href={linkFor(r.categoryId)} className="flex items-center gap-2 text-ink hover:underline">
+                    <CategoryDot color={r.color} />
+                    {r.name}
+                  </Link>
+                </td>
+                <td className="tabular hidden px-3 py-2.5 text-right text-ink-2 sm:table-cell">{r.count}</td>
+                <td className="tabular px-3 py-2.5 text-right text-ink-2">{formatPercent(sum ? r.total / sum : 0)}</td>
+                <td className="tabular px-5 py-2.5 text-right font-medium text-ink">{formatMoney(r.total, currency)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="sticky bottom-0 z-10 bg-surface shadow-[inset_0_1px_0_var(--line-strong)]">
+            <tr className="font-semibold">
+              <td className="px-5 py-2.5">Total</td>
+              <td className="hidden sm:table-cell" />
+              <td />
+              <td className="tabular px-5 py-2.5 text-right">{formatMoney(sum, currency)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
   );
 }
