@@ -7,6 +7,7 @@ import type { CategoryRow, TxRow } from "@/server/queries";
 import { isFormula, parseAmount } from "@/lib/amount";
 import { KINDS, type Kind } from "@/lib/filters";
 import { formatMoney } from "@/lib/format";
+import { notifyLedgerChanged } from "@/lib/ledger-events";
 import { CategoryCombobox } from "./category-combobox";
 import { Button, Field, Input, Select } from "./ui";
 import { toast } from "./toast";
@@ -39,6 +40,7 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
     const res = await saveTransaction(prev, form);
     if (res.ok) {
       toast(res.message ?? "Saved");
+      notifyLedgerChanged();
       if (!transaction) {
         setAmount("");
         setNote("");
@@ -129,7 +131,7 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
                 name="categoryKind"
                 value={newKind}
                 onChange={(e) => setNewKind(e.target.value as Kind)}
-                className="h-8 w-auto py-0 text-sm"
+                className="h-8 w-auto! py-0 text-sm"
                 aria-label="Type"
               >
                 {KINDS.map((k) => (

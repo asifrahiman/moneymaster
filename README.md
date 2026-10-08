@@ -28,7 +28,9 @@ has light and dark themes.
 - **Amount formulas.** Type `120+80*2` or `=1500/3` in the amount field. You see a live preview, and the server
   re-checks the result. Only `+ - * / ( )` are allowed, and nothing gets `eval`-ed.
 - **Reports.** Totals and share by category for any period, a spending-mix donut, CSV export, and links through
-  to the matching transactions.
+  to the matching transactions. **Download summary (.txt)** saves a plain-text summary for archiving: a
+  `September 2026 - 121164.55` headline (net expense: all spending except savings, income and carry forward),
+  followed by every category's total in aligned columns.
 - **Trends.** Monthly spending by category over 6, 12 or 24 months (top 5 categories plus "Other"), income vs
   spending, and a table of the monthly figures.
 - **Categories.** Each user has their own categories. A category has a type (expense, income or savings) and a

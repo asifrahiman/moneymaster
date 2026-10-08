@@ -5,8 +5,6 @@ import type { Scope } from "./dal";
 import { categories, transactions } from "@/db/schema";
 import type { Kind, TxFilters } from "@/lib/filters";
 
-export const PAGE_SIZE = 25;
-
 /* All functions take the scope (user + active book) from requireUser(); every query is limited to it. */
 
 const inBook = (s: Scope) => and(eq(transactions.userId, s.userId), eq(transactions.bookId, s.bookId))!;
@@ -17,7 +15,7 @@ function txWhere(s: Scope, f: Partial<TxFilters>): SQL {
   if (f.to) conds.push(lte(transactions.occurredOn, f.to));
   if (f.categoryId) conds.push(eq(transactions.categoryId, f.categoryId));
   if (f.kind) conds.push(eq(categories.kind, f.kind));
-  if (f.card) conds.push(eq(transactions.paidByCard, true));
+  if (f.card !== undefined) conds.push(eq(transactions.paidByCard, f.card));
   if (f.q) {
     const pattern = `%${f.q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
     conds.push(sql`(${ilike(transactions.note, pattern)} or ${ilike(categories.name, pattern)})`);
@@ -116,39 +114,64 @@ const txSelect = {
   kind: categories.kind,
 };
 
-export async function listTransactions(s: Scope, f: TxFilters, pageSize = PAGE_SIZE) {
-  const where = txWhere(s, f);
-  const [rows, [totalsRow]] = await Promise.all([
-    db
-      .select(txSelect)
-      .from(transactions)
-      .innerJoin(categories, eq(categories.id, transactions.categoryId))
-      .where(where)
-      .orderBy(desc(transactions.occurredOn), desc(transactions.createdAt))
-      .limit(pageSize)
-      .offset((f.page - 1) * pageSize),
-    db
-      .select(totalsSelect)
-      .from(transactions)
-      .innerJoin(categories, eq(categories.id, transactions.categoryId))
-      .where(where),
-  ]);
-  const totals = toTotals(totalsRow);
-  return { rows: rows as TxRow[], totals, pageCount: Math.max(1, Math.ceil(totals.count / pageSize)) };
+export const LEDGER_PAGE_SIZE = 100;
+
+type Cursor = [occurredOn: string, createdAt: string, id: string];
+
+function encodeCursor(c: Cursor): string {
+  return Buffer.from(JSON.stringify(c)).toString("base64url");
+}
+function decodeCursor(raw: string | null | undefined): Cursor | null {
+  if (!raw) return null;
+  try {
+    const c = JSON.parse(Buffer.from(raw, "base64url").toString("utf8"));
+    if (
+      Array.isArray(c) &&
+      c.length === 3 &&
+      /^\d{4}-\d{2}-\d{2}$/.test(c[0]) &&
+      typeof c[1] === "string" &&
+      !Number.isNaN(Date.parse(c[1])) &&
+      /^[0-9a-f-]{36}$/i.test(c[2])
+    )
+      return c as Cursor;
+  } catch {}
+  return null;
+}
+
+/**
+ * One page of transactions, newest first. Uses keyset ("seek") pagination: the
+ * cursor is the last row's (date, created_at, id), so page 60 is as fast as page 1
+ * and rows never repeat or go missing while you scroll.
+ */
+export async function ledgerPage(s: Scope, f: Partial<TxFilters>, cursor?: string | null, limit = LEDGER_PAGE_SIZE) {
+  const after = decodeCursor(cursor);
+  const where = after
+    ? and(
+        txWhere(s, f),
+        sql`(${transactions.occurredOn}, ${transactions.createdAt}, ${transactions.id}) < (${after[0]}::date, ${after[1]}::timestamptz, ${after[2]}::uuid)`,
+      )!
+    : txWhere(s, f);
+  const rows = await db
+    .select({ ...txSelect, createdAtText: sql<string>`${transactions.createdAt}::text` })
+    .from(transactions)
+    .innerJoin(categories, eq(categories.id, transactions.categoryId))
+    .where(where)
+    .orderBy(desc(transactions.occurredOn), desc(transactions.createdAt), desc(transactions.id))
+    .limit(limit + 1);
+  const page = rows.slice(0, limit);
+  const last = page.at(-1);
+  return {
+    rows: page.map((r) => {
+      const { createdAtText, ...row } = r;
+      void createdAtText;
+      return row;
+    }) as TxRow[],
+    nextCursor: rows.length > limit && last ? encodeCursor([last.occurredOn, last.createdAtText, last.id]) : null,
+  };
 }
 
 /** Unpaginated, for CSV export. Capped to keep a single response bounded. */
 export async function exportTransactions(s: Scope, f: Partial<TxFilters>, limit = 50_000) {
-  return (await db
-    .select(txSelect)
-    .from(transactions)
-    .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(txWhere(s, f))
-    .orderBy(desc(transactions.occurredOn), desc(transactions.createdAt))
-    .limit(limit)) as TxRow[];
-}
-
-export async function recentTransactions(s: Scope, limit = 8, f: Partial<TxFilters> = {}) {
   return (await db
     .select(txSelect)
     .from(transactions)

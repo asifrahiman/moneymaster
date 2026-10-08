@@ -1,13 +1,12 @@
 "use client";
 
 import clsx from "clsx";
-import { BarChart3, LayoutDashboard, ListOrdered, PieChart, Settings } from "lucide-react";
+import { BarChart3, LayoutDashboard, PieChart, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export const NAV = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/transactions", label: "Transactions", icon: ListOrdered },
+  { href: "/", label: "Home", icon: LayoutDashboard },
   { href: "/reports", label: "Reports", icon: PieChart },
   { href: "/trends", label: "Trends", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -45,7 +44,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
       {NAV.map(({ href, label, icon: Icon }) => (
         <Link

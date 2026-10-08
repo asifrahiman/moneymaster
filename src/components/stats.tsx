@@ -21,15 +21,18 @@ export function StatGrid({
   previous,
   compareLabel = "than this point last month",
   currency,
-  balance,
+  layout = "full",
+  since,
 }: {
   totals: Totals;
   previous?: Totals;
   /** How the spending change is described, e.g. "than this point last month". */
   compareLabel?: string;
   currency: string;
-  /** Show the running balance first (all-time view) instead of "Net" last. */
-  balance?: { since: string | null };
+  /** "balance" = just the balance (all-time books); "full" = balance first, then spent / income / saved. */
+  layout?: "balance" | "full";
+  /** First entry date, shown under an all-time balance. */
+  since?: string | null;
 }) {
   let delta: React.ReactNode = null;
   if (previous && previous.spent > 0) {
@@ -43,18 +46,21 @@ export function StatGrid({
     );
   }
   const money = (v: number) => formatMoney(v, currency);
-  const netValue = `${totals.net < 0 ? "−" : ""}${money(Math.abs(totals.net))}`;
-  const net = (
+  const net = Math.abs(totals.net) < 0.005 ? 0 : totals.net;
+  const balance = (
     <Stat
-      label={balance ? "Balance" : "Net"}
-      value={netValue}
-      emphasis={totals.net < 0 ? "text-negative" : "text-ink"}
-      sub={balance ? `Income − spent − saved${balance.since ? ` since ${formatDate(balance.since)}` : ""}` : "Income − spent − saved"}
+      label="Balance"
+      value={`${net < 0 ? "−" : ""}${money(Math.abs(net))}`}
+      emphasis={net < 0 ? "text-negative" : "text-ink"}
+      sub={`Income − spent − saved${since ? ` since ${formatDate(since)}` : ""}`}
     />
   );
+
+  if (layout === "balance") return <div className="grid grid-cols-1 sm:max-w-sm">{balance}</div>;
+
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      {balance && net}
+      {balance}
       <Stat
         label="Spent"
         value={money(totals.spent)}
@@ -69,7 +75,6 @@ export function StatGrid({
       />
       <Stat label="Income" value={money(totals.income)} />
       <Stat label="Saved" value={money(totals.saved)} />
-      {!balance && net}
     </div>
   );
 }
