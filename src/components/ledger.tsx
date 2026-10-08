@@ -205,6 +205,7 @@ export function Ledger({
             onChange={setFilters}
             today={today}
             categories={categories}
+            available={data.available}
             defaults={defaults}
             showCategory
             showSearch

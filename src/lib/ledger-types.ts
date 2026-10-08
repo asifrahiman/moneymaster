@@ -8,6 +8,8 @@ export type LedgerResponse = {
   totals: Totals | null;
   /** First transaction date, only for an all-time first page. */
   since: string | null;
+  /** Only on the first page: categories with transactions under these filters (ignoring the category filter). */
+  available: { id: string; count: number }[] | null;
 };
 
 /** Shape of GET /api/report. */

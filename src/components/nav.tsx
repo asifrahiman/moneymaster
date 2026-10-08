@@ -1,7 +1,7 @@
 "use client";
 
 import clsx from "clsx";
-import { BarChart3, LayoutDashboard, PieChart, Settings } from "lucide-react";
+import { BarChart3, LayoutDashboard, PieChart } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -9,11 +9,9 @@ export const NAV = [
   { href: "/", label: "Home", icon: LayoutDashboard },
   { href: "/reports", label: "Reports", icon: PieChart },
   { href: "/trends", label: "Trends", icon: BarChart3 },
-  { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
-/** The phone tab bar leaves out Settings: it lives in the profile menu (top right). */
-const TABS = NAV.filter((n) => n.href !== "/settings");
+// Settings isn't a tab: it lives in the profile menu (avatar / name).
 
 function useActive() {
   const pathname = usePathname();
@@ -49,7 +47,7 @@ export function BottomNav() {
       aria-label="Main"
       className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
-      {TABS.map(({ href, label, icon: Icon }) => (
+      {NAV.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}

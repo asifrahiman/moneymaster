@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { requireUser, scopeOf } from "@/server/dal";
-import { firstTransactionDate, getTotals, ledgerPage } from "@/server/queries";
+import { categoriesInView, firstTransactionDate, getTotals, ledgerPage } from "@/server/queries";
 import { parseFilters } from "@/lib/filters";
 import type { LedgerResponse } from "@/lib/ledger-types";
 
@@ -15,12 +15,13 @@ export async function GET(req: NextRequest) {
   const filters = parseFilters(params, user.today, user.book.period === "all" ? "all" : "month");
   const cursor = req.nextUrl.searchParams.get("cursor");
 
-  const [page, totals, since] = await Promise.all([
+  const [page, totals, since, available] = await Promise.all([
     ledgerPage(scope, filters, cursor),
     cursor ? null : getTotals(scope, filters),
     cursor || filters.from || filters.to ? null : firstTransactionDate(scope),
+    cursor ? null : categoriesInView(scope, filters),
   ]);
 
-  const body: LedgerResponse = { ...page, totals, since };
+  const body: LedgerResponse = { ...page, totals, since, available };
   return Response.json(body, { headers: { "Cache-Control": "no-store" } });
 }

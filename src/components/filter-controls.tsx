@@ -66,6 +66,7 @@ export function FilterControls({
   onChange,
   today,
   categories,
+  available,
   defaults,
   showCategory = false,
   showSearch = false,
@@ -74,6 +75,8 @@ export function FilterControls({
   onChange: (next: FilterValue) => void;
   today: string;
   categories?: CategoryRow[];
+  /** Categories with transactions under the other filters (with counts); only these are offered. */
+  available?: { id: string; count: number }[] | null;
   /** What "Clear" resets to (the book's default duration). */
   defaults: FilterValue;
   showCategory?: boolean;
@@ -98,32 +101,12 @@ export function FilterControls({
   return (
     <div className="flex flex-wrap items-center gap-2" role="search">
       {showCategory && categories && (
-        <Select
-          aria-label="Category"
-          value={value.categoryId ?? ""}
-          onChange={(e) => set({ categoryId: e.target.value || undefined })}
-          className="h-9 basis-full sm:order-6 sm:w-auto! sm:max-w-48 sm:basis-auto"
-        >
-          <option value="">All categories</option>
-          {categories
-            .filter((c) => c.saved)
-            .map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          {categories.some((c) => !c.saved) && (
-            <optgroup label="One-time labels">
-              {categories
-                .filter((c) => !c.saved)
-                .map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-            </optgroup>
-          )}
-        </Select>
+        <CategorySelect
+          categories={categories}
+          available={available}
+          value={value.categoryId}
+          onChange={(categoryId) => set({ categoryId })}
+        />
       )}
 
       <Select
@@ -246,5 +229,60 @@ export function FilterControls({
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Only the categories that appear in the current list (for the chosen duration,
+ * type, card and search), each with its count, most used first. The selected
+ * category stays listed even if it no longer matches, so the control never
+ * shows a value that isn't an option.
+ */
+function CategorySelect({
+  categories,
+  available,
+  value,
+  onChange,
+}: {
+  categories: CategoryRow[];
+  available?: { id: string; count: number }[] | null;
+  value?: string;
+  onChange: (id: string | undefined) => void;
+}) {
+  const counts = new Map((available ?? []).map((a) => [a.id, a.count]));
+  const shown = categories
+    .filter((c) => counts.has(c.id) || c.id === value || !available)
+    .sort((a, b) => (counts.get(b.id) ?? 0) - (counts.get(a.id) ?? 0) || a.name.localeCompare(b.name));
+  const saved = shown.filter((c) => c.saved);
+  const once = shown.filter((c) => !c.saved);
+  const label = (c: CategoryRow) => (counts.has(c.id) ? `${c.name} (${counts.get(c.id)})` : c.name);
+  const total = available?.reduce((s, a) => s + a.count, 0);
+
+  return (
+    <Select
+      aria-label="Category"
+      value={value ?? ""}
+      onChange={(e) => onChange(e.target.value || undefined)}
+      className="h-9 basis-full sm:order-6 sm:w-auto! sm:max-w-56 sm:basis-auto"
+    >
+      <option value="">
+        {available ? `All categories (${shown.length - (value && !counts.has(value) ? 1 : 0)})` : "All categories"}
+      </option>
+      {saved.map((c) => (
+        <option key={c.id} value={c.id}>
+          {label(c)}
+        </option>
+      ))}
+      {once.length > 0 && (
+        <optgroup label="One-time labels">
+          {once.map((c) => (
+            <option key={c.id} value={c.id}>
+              {label(c)}
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {available && shown.length === 0 && total === 0 && <option disabled>No categories in this period</option>}
+    </Select>
   );
 }

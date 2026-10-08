@@ -209,6 +209,21 @@ export async function categoryBreakdown(s: Scope, f: Partial<TxFilters>): Promis
   return rows.map((r) => ({ ...r, total: Number(r.total), count: Number(r.count) }));
 }
 
+/**
+ * Categories that have transactions under the given filters, with counts — what
+ * the category filter offers. The category filter itself is ignored so you can
+ * switch between categories without first clearing it.
+ */
+export async function categoriesInView(s: Scope, f: Partial<TxFilters>): Promise<{ id: string; count: number }[]> {
+  const rows = await db
+    .select({ id: categories.id, count: count() })
+    .from(transactions)
+    .innerJoin(categories, eq(categories.id, transactions.categoryId))
+    .where(txWhere(s, { ...f, categoryId: undefined }))
+    .groupBy(categories.id);
+  return rows.map((r) => ({ id: r.id, count: Number(r.count) }));
+}
+
 export type MonthlyRow = { month: string; categoryId: string; kind: Kind; total: number };
 
 /** Per-month, per-category totals for the Trends page. */

@@ -6,7 +6,7 @@ import { TransactionForm } from "@/components/transaction-form";
 import { Card, CardHeader, PageHeader, Skeleton } from "@/components/ui";
 import { parseFilters } from "@/lib/filters";
 import { requireUser, scopeOf } from "@/server/dal";
-import { firstTransactionDate, getTotals, ledgerPage, listCategories } from "@/server/queries";
+import { categoriesInView, firstTransactionDate, getTotals, ledgerPage, listCategories } from "@/server/queries";
 
 export default function HomePage({ searchParams }: PageProps<"/">) {
   return (
@@ -36,11 +36,12 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
     q: f.q,
   };
 
-  const [categories, page, totals, since] = await Promise.all([
+  const [categories, page, totals, since, available] = await Promise.all([
     listCategories(scope),
     ledgerPage(scope, f),
     getTotals(scope, f),
     f.from || f.to ? null : firstTransactionDate(scope),
+    categoriesInView(scope, f),
   ]);
 
   const firstName = user.name?.split(" ")[0];
@@ -54,7 +55,7 @@ async function Home({ searchParams }: { searchParams: PageProps<"/">["searchPara
         // A different book is a different ledger: remount so no state leaks across.
         key={user.book.id}
         initialFilters={initialFilters}
-        initialData={{ ...page, totals, since }}
+        initialData={{ ...page, totals, since, available }}
         defaults={defaults}
         categories={categories}
         today={user.today}
