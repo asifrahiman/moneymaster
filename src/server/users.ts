@@ -1,7 +1,7 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { categories, users, type CategoryKind } from "@/db/schema";
+import { books, categories, users, type BookPeriod, type CategoryKind } from "@/db/schema";
 import { SERIES_SLOTS } from "@/lib/palette";
 
 export const DEFAULT_CATEGORIES: { name: string; kind: CategoryKind }[] = [
@@ -47,14 +47,40 @@ export async function upsertUserOnSignIn(input: { email: string; name: string | 
       // Lost a race with a concurrent first sign-in.
       return (await tx.query.users.findFirst({ where: eq(users.email, email) }))!;
     }
-    await tx.insert(categories).values(
+    await createBook(created.id, { name: "Personal", period: "month", starter: true }, tx);
+    return created;
+  });
+}
+
+type Executor = Pick<typeof db, "insert" | "update">;
+
+/**
+ * Creates a book (optionally with the starter categories). The user's first book
+ * becomes their active one.
+ */
+export async function createBook(
+  userId: string,
+  opts: { name: string; period: BookPeriod; starter?: boolean },
+  exec: Executor = db,
+) {
+  const [book] = await exec
+    .insert(books)
+    .values({ userId, name: opts.name, period: opts.period })
+    .returning({ id: books.id, name: books.name, period: books.period });
+  if (opts.starter) {
+    await exec.insert(categories).values(
       DEFAULT_CATEGORIES.map((c, i) => ({
-        userId: created.id,
+        userId,
+        bookId: book.id,
         name: c.name,
         kind: c.kind,
         color: SERIES_SLOTS[i % SERIES_SLOTS.length],
       })),
     );
-    return created;
-  });
+  }
+  await exec
+    .update(users)
+    .set({ activeBookId: book.id })
+    .where(and(eq(users.id, userId), isNull(users.activeBookId)));
+  return book;
 }

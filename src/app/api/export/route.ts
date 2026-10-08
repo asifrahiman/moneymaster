@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { requireUser } from "@/server/dal";
+import { requireUser, scopeOf } from "@/server/dal";
 import { exportTransactions } from "@/server/queries";
 import { parseFilters } from "@/lib/filters";
 
@@ -10,11 +10,13 @@ function csvField(v: string | number | boolean | null): string {
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "book";
+
 export async function GET(req: NextRequest) {
   const user = await requireUser();
   const params = Object.fromEntries(req.nextUrl.searchParams);
   const filters = parseFilters(params, user.today, "all");
-  const rows = await exportTransactions(user.id, filters);
+  const rows = await exportTransactions(scopeOf(user), filters);
 
   const header = ["Date", "Category", "Type", "Amount", "Paid by card", "Note"];
   const lines = rows.map((r) =>
@@ -27,7 +29,7 @@ export async function GET(req: NextRequest) {
   return new Response(body, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="moneymaster_${stamp}.csv"`,
+      "Content-Disposition": `attachment; filename="moneymaster_${slug(user.book.name)}_${stamp}.csv"`,
       "Cache-Control": "no-store",
     },
   });

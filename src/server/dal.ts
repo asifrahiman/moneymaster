@@ -2,11 +2,14 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { books, users, type BookPeriod } from "@/db/schema";
 import { todayIn } from "@/lib/dates";
+import { createBook } from "./users";
+
+export type BookRef = { id: string; name: string; period: BookPeriod };
 
 export type CurrentUser = {
   id: string;
@@ -16,12 +19,20 @@ export type CurrentUser = {
   currency: string;
   timezone: string;
   today: string;
+  /** The active book; every read and write is scoped to it. */
+  book: BookRef;
+  books: BookRef[];
 };
+
+/** What queries need to stay inside the user's active book. */
+export type Scope = { userId: string; bookId: string };
+export const scopeOf = (u: CurrentUser): Scope => ({ userId: u.id, bookId: u.book.id });
 
 /**
  * Data Access Layer entry point: verifies the session and returns the current
- * user. Every page and server action calls this; all queries are scoped by the
- * id it returns, so users can never read or change each other's data.
+ * user with their active book. Every page and server action calls this; all
+ * queries are scoped by the user and book it returns, so nobody can read or
+ * change data in someone else's book.
  */
 export const requireUser = cache(async (): Promise<CurrentUser> => {
   // Mark everything below as request-time: Auth.js uses crypto while decoding the
@@ -34,6 +45,15 @@ export const requireUser = cache(async (): Promise<CurrentUser> => {
   const user = await db.query.users.findFirst({ where: eq(users.id, id) });
   if (!user) redirect("/login");
 
+  let list = await db
+    .select({ id: books.id, name: books.name, period: books.period })
+    .from(books)
+    .where(eq(books.userId, user.id))
+    .orderBy(asc(books.createdAt));
+  if (list.length === 0) list = [await createBook(user.id, { name: "Personal", period: "month", starter: true })];
+  // Only a book the user owns can be active; fall back to their first one.
+  const book = list.find((b) => b.id === user.activeBookId) ?? list[0];
+
   return {
     id: user.id,
     email: user.email,
@@ -42,5 +62,7 @@ export const requireUser = cache(async (): Promise<CurrentUser> => {
     currency: user.currency,
     timezone: user.timezone,
     today: todayIn(user.timezone),
+    book,
+    books: list,
   };
 });

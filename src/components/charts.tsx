@@ -194,8 +194,8 @@ export function CategoryDonut({
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-xs text-muted">Spent</span>
-        <span className="text-lg font-semibold tracking-tight text-ink">
-          {formatMoney(total, currency, { compact: true })}
+        <span className="tabular text-sm font-semibold tracking-tight text-ink">
+          {formatMoney(total, currency)}
         </span>
       </div>
     </div>

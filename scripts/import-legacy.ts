@@ -17,6 +17,11 @@
  *   --map "Asif=asif@example.com,Sara=sara@example.com"
  *   --map-file map.json        ({ "Asif": "asif@example.com" })
  *
+ * Books (separate ledgers, each with its own categories):
+ *   --book <name>              book to import into; created if it doesn't exist (required)
+ *   --period all|month         view for a newly created book: all-time running balance, or
+ *                              month by month (default: month)
+ *
  * Categories:
  *   --categories saved         (default when the `type` table is available) your saved types become
  *                              categories; free-text "Others" labels become one-time labels (kept under
@@ -31,7 +36,8 @@
  *
  * Safe to re-run: rows are keyed by (user, legacy id) and skipped if already imported.
  *
- *   npm run import:legacy -- --csv expenses.csv --map "Asif=asif@gmail.com" --dry-run
+ *   npm run import:legacy -- --sql moneymaster.sql --book Lifetime --period all \
+ *     --map "Asif=asif@gmail.com" --fix-typos --dry-run
  */
 import "dotenv/config";
 import { readFileSync } from "node:fs";
@@ -42,7 +48,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "../src/db/schema";
 import { migrationDatabaseUrl, requireDatabaseUrl } from "../src/db/url";
-import { categories, transactions, users } from "../src/db/schema";
+import { books, categories, transactions, users } from "../src/db/schema";
 import { nextSlot } from "../src/lib/palette";
 import {
   parseLegacyAmount,
@@ -64,6 +70,8 @@ const { values: args } = parseArgs({
     categories: { type: "string" },
     "fix-typos": { type: "boolean", default: false },
     "prune-unused": { type: "boolean", default: false },
+    book: { type: "string" },
+    period: { type: "string", default: "month" },
     "dry-run": { type: "boolean", default: false },
   },
 });
@@ -149,6 +157,11 @@ async function main() {
   if (mode === "saved" && !savedTypes) fatal(`--categories saved needs the legacy \`type\` table: use --sql or --mysql`);
   console.log(`Category mode: ${mode}${args["fix-typos"] ? " (fixing typos)" : ""}`);
 
+  const bookName = args.book?.trim();
+  if (!bookName) fatal(`Name the book to import into, e.g. --book Lifetime (created if it doesn't exist)`);
+  const period = args.period as "all" | "month";
+  if (period !== "all" && period !== "month") fatal(`--period must be "all" or "month"`);
+
   const byUser = new Map<string, LegacyRow[]>();
   for (const r of rows) {
     const key = String(r.user ?? "").trim();
@@ -214,8 +227,19 @@ async function main() {
             .returning();
         }
 
+        // The book (separate ledger) to import into: found by name, created if missing.
+        let book = await tx.query.books.findFirst({
+          where: and(eq(books.userId, user.id), sql`lower(${books.name}) = lower(${bookName})`),
+        });
+        if (!book) {
+          [book] = await tx.insert(books).values({ userId: user.id, name: bookName, period }).returning();
+          console.log(`  Created book “${bookName}” (${period === "all" ? "all-time" : "monthly"} view)`);
+        }
+        if (!user.activeBookId) await tx.update(users).set({ activeBookId: book.id }).where(eq(users.id, user.id));
+        const bookId = book.id;
+
         // Categories: reuse by case-insensitive name, create the rest (all saved types, even unused).
-        const existing = await tx.select().from(categories).where(eq(categories.userId, user.id));
+        const existing = await tx.select().from(categories).where(eq(categories.bookId, bookId));
         const catIds = new Map(existing.map((c) => [c.name.toLowerCase(), c.id]));
         const existingSaved = new Map(existing.map((c) => [c.name.toLowerCase(), c.saved]));
         const usedColors = existing.map((c) => c.color);
@@ -229,7 +253,10 @@ async function main() {
           }
           const color = nextSlot(usedColors);
           usedColors.push(color);
-          const [c] = await tx.insert(categories).values({ userId: user.id, name, kind, color, saved }).returning();
+          const [c] = await tx
+            .insert(categories)
+            .values({ userId: user.id, bookId, name, kind, color, saved })
+            .returning();
           catIds.set(key, c.id);
         }
 
@@ -241,6 +268,7 @@ async function main() {
             .values(
               batch.map((v) => ({
                 userId: user.id,
+                bookId,
                 categoryId: catIds.get(v.category.toLowerCase())!,
                 amount: v.amount,
                 occurredOn: v.date,
@@ -248,7 +276,7 @@ async function main() {
                 legacyId: Number(v.row.id),
               })),
             )
-            .onConflictDoNothing({ target: [transactions.userId, transactions.legacyId] })
+            .onConflictDoNothing({ target: [transactions.bookId, transactions.legacyId] })
             .returning({ id: transactions.id });
           report.inserted += inserted.length;
           report.existing += batch.length - inserted.length;
@@ -259,7 +287,7 @@ async function main() {
             .delete(categories)
             .where(
               and(
-                eq(categories.userId, user.id),
+                eq(categories.bookId, bookId),
                 // Keep the categories this import just carried forward, even if unused.
                 notInArray(
                   sql`lower(${categories.name})`,
@@ -277,8 +305,9 @@ async function main() {
         .select({ n: sql<number>`count(*)::int` })
         .from(transactions)
         .innerJoin(users, eq(users.id, transactions.userId))
-        .where(and(eq(users.email, email)));
-      console.log(`  ${legacyUser} → ${email}: now ${n} transactions in total`);
+        .innerJoin(books, eq(books.id, transactions.bookId))
+        .where(and(eq(users.email, email), sql`lower(${books.name}) = lower(${bookName})`));
+      console.log(`  ${legacyUser} → ${email}: book “${bookName}” now has ${n} transactions`);
     }
   } finally {
     await pool.end();

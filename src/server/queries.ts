@@ -1,15 +1,18 @@
 import "server-only";
 import { and, asc, count, desc, eq, gte, ilike, lte, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
+import type { Scope } from "./dal";
 import { categories, transactions } from "@/db/schema";
 import type { Kind, TxFilters } from "@/lib/filters";
 
 export const PAGE_SIZE = 25;
 
-/* All functions take the userId from requireUser(); every query is scoped by it. */
+/* All functions take the scope (user + active book) from requireUser(); every query is limited to it. */
 
-function txWhere(userId: string, f: Partial<TxFilters>): SQL {
-  const conds: SQL[] = [eq(transactions.userId, userId)];
+const inBook = (s: Scope) => and(eq(transactions.userId, s.userId), eq(transactions.bookId, s.bookId))!;
+
+function txWhere(s: Scope, f: Partial<TxFilters>): SQL {
+  const conds: SQL[] = [inBook(s)];
   if (f.from) conds.push(gte(transactions.occurredOn, f.from));
   if (f.to) conds.push(lte(transactions.occurredOn, f.to));
   if (f.categoryId) conds.push(eq(transactions.categoryId, f.categoryId));
@@ -44,20 +47,20 @@ function toTotals(r: { spent: string; income: string; saved: string; card: strin
 }
 
 /** Date of the first transaction (the start of the all-time balance), or null. */
-export async function firstTransactionDate(userId: string): Promise<string | null> {
+export async function firstTransactionDate(s: Scope): Promise<string | null> {
   const [row] = await db
     .select({ first: sql<string | null>`min(${transactions.occurredOn})` })
     .from(transactions)
-    .where(eq(transactions.userId, userId));
+    .where(inBook(s));
   return row?.first ?? null;
 }
 
-export async function getTotals(userId: string, f: Partial<TxFilters>): Promise<Totals> {
+export async function getTotals(s: Scope, f: Partial<TxFilters>): Promise<Totals> {
   const [row] = await db
     .select(totalsSelect)
     .from(transactions)
     .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(txWhere(userId, f));
+    .where(txWhere(s, f));
   return toTotals(row);
 }
 
@@ -71,7 +74,7 @@ export type CategoryRow = {
   txCount: number;
 };
 
-export async function listCategories(userId: string): Promise<CategoryRow[]> {
+export async function listCategories(s: Scope): Promise<CategoryRow[]> {
   const rows = await db
     .select({
       id: categories.id,
@@ -83,7 +86,7 @@ export async function listCategories(userId: string): Promise<CategoryRow[]> {
     })
     .from(categories)
     .leftJoin(transactions, eq(transactions.categoryId, categories.id))
-    .where(eq(categories.userId, userId))
+    .where(and(eq(categories.userId, s.userId), eq(categories.bookId, s.bookId)))
     .groupBy(categories.id)
     .orderBy(desc(categories.saved), asc(categories.kind), asc(sql`lower(${categories.name})`));
   return rows;
@@ -113,8 +116,8 @@ const txSelect = {
   kind: categories.kind,
 };
 
-export async function listTransactions(userId: string, f: TxFilters, pageSize = PAGE_SIZE) {
-  const where = txWhere(userId, f);
+export async function listTransactions(s: Scope, f: TxFilters, pageSize = PAGE_SIZE) {
+  const where = txWhere(s, f);
   const [rows, [totalsRow]] = await Promise.all([
     db
       .select(txSelect)
@@ -135,22 +138,22 @@ export async function listTransactions(userId: string, f: TxFilters, pageSize = 
 }
 
 /** Unpaginated, for CSV export. Capped to keep a single response bounded. */
-export async function exportTransactions(userId: string, f: Partial<TxFilters>, limit = 50_000) {
+export async function exportTransactions(s: Scope, f: Partial<TxFilters>, limit = 50_000) {
   return (await db
     .select(txSelect)
     .from(transactions)
     .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(txWhere(userId, f))
+    .where(txWhere(s, f))
     .orderBy(desc(transactions.occurredOn), desc(transactions.createdAt))
     .limit(limit)) as TxRow[];
 }
 
-export async function recentTransactions(userId: string, limit = 8) {
+export async function recentTransactions(s: Scope, limit = 8, f: Partial<TxFilters> = {}) {
   return (await db
     .select(txSelect)
     .from(transactions)
     .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(eq(transactions.userId, userId))
+    .where(txWhere(s, f))
     .orderBy(desc(transactions.occurredOn), desc(transactions.createdAt))
     .limit(limit)) as TxRow[];
 }
@@ -165,7 +168,7 @@ export type BreakdownRow = {
 };
 
 /** Totals per category for a date range (Reports page, dashboard). */
-export async function categoryBreakdown(userId: string, f: Partial<TxFilters>): Promise<BreakdownRow[]> {
+export async function categoryBreakdown(s: Scope, f: Partial<TxFilters>): Promise<BreakdownRow[]> {
   const rows = await db
     .select({
       categoryId: categories.id,
@@ -177,7 +180,7 @@ export async function categoryBreakdown(userId: string, f: Partial<TxFilters>): 
     })
     .from(transactions)
     .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(txWhere(userId, f))
+    .where(txWhere(s, f))
     .groupBy(categories.id)
     .orderBy(desc(sql`sum(${transactions.amount})`));
   return rows.map((r) => ({ ...r, total: Number(r.total), count: Number(r.count) }));
@@ -186,7 +189,7 @@ export async function categoryBreakdown(userId: string, f: Partial<TxFilters>): 
 export type MonthlyRow = { month: string; categoryId: string; kind: Kind; total: number };
 
 /** Per-month, per-category totals for the Trends page. */
-export async function monthlyTotals(userId: string, from: string, to: string): Promise<MonthlyRow[]> {
+export async function monthlyTotals(s: Scope, from: string, to: string): Promise<MonthlyRow[]> {
   const month = sql<string>`to_char(${transactions.occurredOn}, 'YYYY-MM')`;
   const rows = await db
     .select({
@@ -197,7 +200,7 @@ export async function monthlyTotals(userId: string, from: string, to: string): P
     })
     .from(transactions)
     .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(txWhere(userId, { from, to }))
+    .where(txWhere(s, { from, to }))
     .groupBy(month, categories.id);
   return rows.map((r) => ({ ...r, total: Number(r.total) }));
 }

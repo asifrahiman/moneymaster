@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { BookManager } from "@/components/book-manager";
 import { CategoryManager } from "@/components/category-manager";
 import { SettingsForm } from "@/components/settings-form";
 import { Card, CardHeader, PageHeader, Skeleton } from "@/components/ui";
-import { requireUser } from "@/server/dal";
+import { requireUser, scopeOf } from "@/server/dal";
 import { listCategories } from "@/server/queries";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -28,7 +29,7 @@ export default function SettingsPage() {
 
 async function Settings() {
   const user = await requireUser();
-  const categories = await listCategories(user.id);
+  const categories = await listCategories(scopeOf(user));
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
@@ -36,8 +37,18 @@ async function Settings() {
         <CardHeader title="Preferences" subtitle={`Signed in as ${user.email}`} />
         <SettingsForm currency={user.currency} timezone={user.timezone} />
       </Card>
+      <Card id="books" className="scroll-mt-20 overflow-hidden">
+        <CardHeader
+          title="Books"
+          subtitle="Separate ledgers, each with its own categories and transactions. The open book is used everywhere."
+        />
+        <BookManager books={user.books} activeId={user.book.id} />
+      </Card>
       <Card className="overflow-hidden">
-        <CardHeader title="Categories" subtitle="Saved categories appear in the picker. One-time labels can be saved from the list below." />
+        <CardHeader
+          title={`Categories in “${user.book.name}”`}
+          subtitle="Saved categories appear in the picker. One-time labels can be saved from the list below."
+        />
         <CategoryManager categories={categories} />
       </Card>
     </div>

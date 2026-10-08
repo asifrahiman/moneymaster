@@ -8,7 +8,7 @@ import { StatGrid } from "@/components/stats";
 import { buttonClass, Card, CardHeader, CategoryDot, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { filtersToSearch, KINDS, parseFilters, type TxFilters } from "@/lib/filters";
 import { formatMoney, formatPercent } from "@/lib/format";
-import { requireUser } from "@/server/dal";
+import { requireUser, scopeOf } from "@/server/dal";
 import { categoryBreakdown, getTotals, listCategories, type BreakdownRow } from "@/server/queries";
 
 export const metadata: Metadata = { title: "Reports" };
@@ -31,13 +31,13 @@ export default function ReportsPage({ searchParams }: PageProps<"/reports">) {
 
 async function Report({ searchParams }: { searchParams: PageProps<"/reports">["searchParams"] }) {
   const user = await requireUser();
-  const filters = parseFilters(await searchParams, user.today);
+  const filters = parseFilters(await searchParams, user.today, user.book.period === "all" ? "all" : "this-month");
   const range: Partial<TxFilters> = { from: filters.from, to: filters.to, card: filters.card };
 
   const [categories, totals, breakdown] = await Promise.all([
-    listCategories(user.id),
-    getTotals(user.id, range),
-    categoryBreakdown(user.id, range),
+    listCategories(scopeOf(user)),
+    getTotals(scopeOf(user), range),
+    categoryBreakdown(scopeOf(user), range),
   ]);
 
   const expenses = breakdown.filter((b) => b.kind === "expense");

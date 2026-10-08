@@ -15,9 +15,14 @@ has light and dark themes.
 
 ## Features
 
-- **Dashboard.** Shows your all-time running **balance** (income − spent − saved since your first entry), with
-  total spent, on card, income and saved. It also has a quick-add form, a by-category breakdown and your recent
-  transactions.
+- **Books.** Separate ledgers in one account, each with its own categories and transactions, e.g. *Lifetime* and
+  *Monthly*. Switch between them from the sidebar (or the header on mobile) and manage them in Settings.
+- **Dashboard.** Depends on the book's view:
+  - **All-time balance:** a running balance (income − spent − saved since your first entry), plus total spent,
+    on card, income and saved.
+  - **Month by month:** one month at a time, with ‹ › navigation and a comparison with last month.
+
+  Either way it has a quick-add form, a by-category breakdown and the latest transactions.
 - **Transactions.** Filters (date range, category, type, card only, search) are kept in the URL. Paging and totals
   are done on the server. Tap any row to edit or delete it. You can export the current view as CSV.
 - **Amount formulas.** Type `120+80*2` or `=1500/3` in the amount field. You see a live preview, and the server
@@ -107,11 +112,18 @@ Redeploy, and you're live.
 1. In phpMyAdmin on the old host, select the database and choose **Export → Quick → SQL**. This downloads a
    `.sql` file containing `expenses`, `type` and `users`.
 2. Do a dry run. Old users had a display name and no email, so map each one you want to the Google account
-   that should own the data:
+   that should own the data. Each old app goes into its own **book**, which is created if it doesn't exist:
 
    ```bash
+   # The lifetime app → a book with the all-time balance view
    DATABASE_URL="<Neon unpooled url>" npm run import:legacy -- \
-     --sql moneymaster.sql --map "Asif=you@gmail.com" --fix-typos --prune-unused --dry-run
+     --sql lifetime.sql --book Lifetime --period all \
+     --map "Asif=you@gmail.com" --fix-typos --dry-run
+
+   # The monthly app → a book with the month-by-month view
+   DATABASE_URL="<Neon unpooled url>" npm run import:legacy -- \
+     --sql monthly.sql --book Monthly --period month \
+     --map "Asif=you@gmail.com" --fix-typos --dry-run
    ```
 
    The dry run lists the categories it will create and any rows it will skip.
@@ -129,7 +141,7 @@ How old data maps to the new app:
 Useful options:
 
 - `--fix-typos` merges known variants, for example Intrest → Interest and CarryForward → Carry forward.
-- `--prune-unused` removes the starter categories that are created on first sign-in, if they're still unused.
+- `--prune-unused` removes unused categories in that book that weren't part of the import, such as the starter set.
 - `--categories all` turns every distinct label into a saved category instead.
 
 Running the import again is safe: rows that were already imported are skipped. You can also import from a

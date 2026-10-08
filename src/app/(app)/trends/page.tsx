@@ -6,7 +6,7 @@ import { IncomeVsSpendChart, StackedMonthlyChart } from "@/components/charts";
 import { Card, CardHeader, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { addMonths, endOfMonth, formatMonthKey, monthKeys, startOfMonth } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
-import { requireUser } from "@/server/dal";
+import { requireUser, scopeOf } from "@/server/dal";
 import { listCategories, monthlyTotals } from "@/server/queries";
 
 export const metadata: Metadata = { title: "Trends" };
@@ -39,7 +39,7 @@ async function Trends({ searchParams }: { searchParams: PageProps<"/trends">["se
   const to = endOfMonth(user.today);
   const keys = monthKeys(user.today, months);
 
-  const [categories, rows] = await Promise.all([listCategories(user.id), monthlyTotals(user.id, from, to)]);
+  const [categories, rows] = await Promise.all([listCategories(scopeOf(user)), monthlyTotals(scopeOf(user), from, to)]);
   const byId = new Map(categories.map((c) => [c.id, c]));
 
   // Top expense categories over the whole period keep their own colour; the rest fold into "Other".
@@ -111,7 +111,7 @@ async function Trends({ searchParams }: { searchParams: PageProps<"/trends">["se
             <Tile label="Avg. monthly spend" value={formatMoney(totalSpent / activeMonths, user.currency)} />
             <Tile label={`Spent (${months} months)`} value={formatMoney(totalSpent, user.currency)} />
             <Tile label={`Income (${months} months)`} value={formatMoney(totalIncome, user.currency)} />
-            <Tile label="Highest month" value={peak.spent ? `${peak.label} · ${formatMoney(peak.spent, user.currency, { compact: true })}` : "—"} />
+            <Tile label="Highest month" value={peak.spent ? `${peak.label} · ${formatMoney(peak.spent, user.currency)}` : "—"} />
           </div>
 
           <Card>

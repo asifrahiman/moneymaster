@@ -8,7 +8,7 @@ function Stat({ label, value, sub, emphasis }: { label: string; value: string; s
   return (
     <div className="rounded-2xl border border-line bg-surface px-4 py-3.5 md:px-5 md:py-4">
       <p className="text-xs font-medium text-muted">{label}</p>
-      <p className={`tabular mt-1 truncate text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl ${emphasis ?? "text-ink"}`} title={value}>
+      <p className={`tabular mt-1 truncate text-[clamp(0.95rem,4.2vw,1.25rem)] font-semibold tracking-tight sm:text-xl lg:text-[clamp(1.25rem,1.6vw,1.5rem)] ${emphasis ?? "text-ink"}`} title={value}>
         {value}
       </p>
       {sub ? <div className="mt-1 text-xs text-ink-2">{sub}</div> : null}
@@ -19,11 +19,14 @@ function Stat({ label, value, sub, emphasis }: { label: string; value: string; s
 export function StatGrid({
   totals,
   previous,
+  compareLabel = "than this point last month",
   currency,
   balance,
 }: {
   totals: Totals;
   previous?: Totals;
+  /** How the spending change is described, e.g. "than this point last month". */
+  compareLabel?: string;
   currency: string;
   /** Show the running balance first (all-time view) instead of "Net" last. */
   balance?: { since: string | null };
@@ -35,12 +38,11 @@ export function StatGrid({
     delta = (
       <span className="inline-flex items-center gap-0.5">
         <Arrow className="size-3.5 shrink-0" aria-hidden />
-        {formatPercent(Math.abs(change))} {change >= 0 ? "more" : "less"} than this point last month
+        {formatPercent(Math.abs(change))} {change >= 0 ? "more" : "less"} {compareLabel}
       </span>
     );
   }
-  // Whole rupees in the tiles so large all-time totals fit on a phone.
-  const money = (v: number) => formatMoney(v, currency, { whole: true });
+  const money = (v: number) => formatMoney(v, currency);
   const netValue = `${totals.net < 0 ? "−" : ""}${money(Math.abs(totals.net))}`;
   const net = (
     <Stat

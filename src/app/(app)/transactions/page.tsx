@@ -8,7 +8,7 @@ import { TransactionList } from "@/components/transaction-list";
 import { buttonClass, Card, EmptyState, PageHeader, Skeleton } from "@/components/ui";
 import { filtersToSearch, parseFilters } from "@/lib/filters";
 import { formatMoney } from "@/lib/format";
-import { requireUser } from "@/server/dal";
+import { requireUser, scopeOf } from "@/server/dal";
 import { listCategories, listTransactions } from "@/server/queries";
 
 export const metadata: Metadata = { title: "Transactions" };
@@ -23,10 +23,10 @@ export default function TransactionsPage({ searchParams }: PageProps<"/transacti
 
 async function Transactions({ searchParams }: { searchParams: PageProps<"/transactions">["searchParams"] }) {
   const user = await requireUser();
-  const filters = parseFilters(await searchParams, user.today);
+  const filters = parseFilters(await searchParams, user.today, user.book.period === "all" ? "all" : "this-month");
   const [categories, { rows, totals, pageCount }] = await Promise.all([
-    listCategories(user.id),
-    listTransactions(user.id, filters),
+    listCategories(scopeOf(user)),
+    listTransactions(scopeOf(user), filters),
   ]);
 
   return (

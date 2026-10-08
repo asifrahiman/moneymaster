@@ -21,6 +21,10 @@ import {
 export const categoryKind = pgEnum("category_kind", ["expense", "income", "savings"]);
 export type CategoryKind = (typeof categoryKind.enumValues)[number];
 
+/** How a book is viewed: one running all-time balance, or month by month. */
+export const bookPeriod = pgEnum("book_period", ["all", "month"]);
+export type BookPeriod = (typeof bookPeriod.enumValues)[number];
+
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
@@ -28,8 +32,28 @@ export const users = pgTable("users", {
   image: text("image"),
   currency: text("currency").notNull().default("INR"),
   timezone: text("timezone").notNull().default("Asia/Kolkata"),
+  /** The book currently being viewed (validated against ownership on every request). */
+  activeBookId: uuid("active_book_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * A book is a separate ledger with its own categories and transactions
+ * (e.g. "Lifetime" tracked as a running balance, "Monthly" viewed month by month).
+ */
+export const books = pgTable(
+  "books",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    period: bookPeriod("period").notNull().default("month"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("books_user_name_uq").on(t.userId, sql`lower(${t.name})`)],
+);
 
 export const categories = pgTable(
   "categories",
@@ -38,6 +62,9 @@ export const categories = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    bookId: uuid("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     kind: categoryKind("kind").notNull().default("expense"),
     color: text("color").notNull(),
@@ -50,8 +77,8 @@ export const categories = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    // Case-insensitive uniqueness per user ("Food" and "food" are the same category).
-    uniqueIndex("categories_user_name_uq").on(t.userId, sql`lower(${t.name})`),
+    // Case-insensitive uniqueness per book ("Food" and "food" are the same category).
+    uniqueIndex("categories_book_name_uq").on(t.bookId, sql`lower(${t.name})`),
   ],
 );
 
@@ -62,6 +89,9 @@ export const transactions = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    bookId: uuid("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
     categoryId: uuid("category_id")
       .notNull()
       .references(() => categories.id, { onDelete: "restrict" }),
@@ -80,13 +110,14 @@ export const transactions = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => [
-    index("transactions_user_date_idx").on(t.userId, t.occurredOn.desc()),
-    index("transactions_user_category_idx").on(t.userId, t.categoryId),
-    uniqueIndex("transactions_user_legacy_uq").on(t.userId, t.legacyId),
+    index("transactions_book_date_idx").on(t.bookId, t.occurredOn.desc()),
+    index("transactions_book_category_idx").on(t.bookId, t.categoryId),
+    uniqueIndex("transactions_book_legacy_uq").on(t.bookId, t.legacyId),
     check("transactions_amount_positive", sql`${t.amount} > 0`),
   ],
 );
 
 export type User = typeof users.$inferSelect;
+export type Book = typeof books.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
