@@ -12,6 +12,9 @@ export const NAV = [
   { href: "/settings", label: "Settings", icon: Settings },
 ] as const;
 
+/** The phone tab bar leaves out Settings: it lives in the profile menu (top right). */
+const TABS = NAV.filter((n) => n.href !== "/settings");
+
 function useActive() {
   const pathname = usePathname();
   return (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
@@ -44,9 +47,9 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Main"
-      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-3 border-t border-line bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
     >
-      {NAV.map(({ href, label, icon: Icon }) => (
+      {TABS.map(({ href, label, icon: Icon }) => (
         <Link
           key={href}
           href={href}

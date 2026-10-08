@@ -29,14 +29,20 @@ function Segmented<T extends string | undefined>({
   value,
   options,
   onChange,
+  className,
 }: {
   label: string;
   value: T;
   options: { value: T; label: string }[];
   onChange: (v: T) => void;
+  className?: string;
 }) {
   return (
-    <div role="group" aria-label={label} className="inline-flex shrink-0 rounded-lg border border-line-strong bg-surface p-0.5">
+    <div
+      role="group"
+      aria-label={label}
+      className={clsx("flex rounded-lg border border-line-strong bg-surface p-0.5 sm:inline-flex sm:w-auto sm:shrink-0", className)}
+    >
       {options.map((o) => (
         <button
           key={o.label}
@@ -44,7 +50,7 @@ function Segmented<T extends string | undefined>({
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={clsx(
-            "rounded-md px-2.5 py-1 text-sm whitespace-nowrap transition-colors",
+            "flex-1 rounded-md px-2 py-1 text-sm whitespace-nowrap transition-colors sm:flex-none sm:px-2.5",
             value === o.value ? "bg-accent-soft font-medium text-accent" : "text-ink-2 hover:text-ink",
           )}
         >
@@ -84,150 +90,161 @@ export function FilterControls({
     !value.categoryId &&
     !value.q;
 
+  /*
+   * One wrapping row. On phones the pieces stack into full-width rows with the
+   * category first and nothing scrolls sideways; from `sm` up the `order-*`
+   * classes put them back in a compact toolbar (duration … category, clear).
+   */
   return (
-    <div className="flex flex-col gap-2" role="search">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2" role="search">
+      {showCategory && categories && (
         <Select
-          aria-label="Duration"
-          value={value.preset}
-          onChange={(e) => {
-            const preset = e.target.value as DurationPreset;
-            set({ preset, month: preset === "month" ? month : undefined, from: undefined, to: undefined });
-          }}
-          className="h-9 w-auto!"
+          aria-label="Category"
+          value={value.categoryId ?? ""}
+          onChange={(e) => set({ categoryId: e.target.value || undefined })}
+          className="h-9 basis-full sm:order-6 sm:w-auto! sm:max-w-48 sm:basis-auto"
         >
-          {DURATIONS.map((d) => (
-            <option key={d.value} value={d.value}>
-              {d.label}
-            </option>
-          ))}
+          <option value="">All categories</option>
+          {categories
+            .filter((c) => c.saved)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          {categories.some((c) => !c.saved) && (
+            <optgroup label="One-time labels">
+              {categories
+                .filter((c) => !c.saved)
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+            </optgroup>
+          )}
         </Select>
+      )}
 
-        {value.preset === "month" && (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-label="Previous month"
-              onClick={() => set({ month: shiftMonth(month, -1) })}
-              className="inline-flex size-9 items-center justify-center rounded-lg border border-line-strong bg-surface text-ink-2 hover:bg-surface-2"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <input
-              type="month"
-              aria-label="Month"
-              value={month}
-              max={current}
-              onChange={(e) => e.target.value && set({ month: e.target.value })}
-              className="h-9 rounded-lg border border-line-strong bg-surface px-2 text-sm text-ink"
-            />
-            <button
-              type="button"
-              aria-label="Next month"
-              disabled={month >= current}
-              onClick={() => set({ month: shiftMonth(month, 1) })}
-              className="inline-flex size-9 items-center justify-center rounded-lg border border-line-strong bg-surface text-ink-2 hover:bg-surface-2 disabled:opacity-40"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
+      <Select
+        aria-label="Duration"
+        value={value.preset}
+        onChange={(e) => {
+          const preset = e.target.value as DurationPreset;
+          set({ preset, month: preset === "month" ? month : undefined, from: undefined, to: undefined });
+        }}
+        className={clsx(
+          "h-9 sm:order-1 sm:w-auto! sm:flex-none",
+          showSearch ? "w-auto! shrink-0" : "flex-1",
         )}
+      >
+        {DURATIONS.map((d) => (
+          <option key={d.value} value={d.value}>
+            {d.label}
+          </option>
+        ))}
+      </Select>
 
-        {value.preset === "custom" && (
-          <div className="flex items-center gap-1">
-            <Input
-              type="date"
-              aria-label="From date"
-              value={value.from ?? ""}
-              onChange={(e) => set({ from: e.target.value || undefined })}
-              className="h-9 w-auto!"
-            />
-            <span className="text-muted">–</span>
-            <Input
-              type="date"
-              aria-label="To date"
-              value={value.to ?? ""}
-              onChange={(e) => set({ to: e.target.value || undefined })}
-              className="h-9 w-auto!"
-            />
-          </div>
-        )}
+      {showSearch && (
+        <div className="relative min-w-0 flex-1 sm:order-3 sm:min-w-40 sm:max-w-64">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
+          <Input
+            type="search"
+            aria-label="Search notes and categories"
+            placeholder="Search…"
+            value={value.q ?? ""}
+            onChange={(e) => set({ q: e.target.value || undefined })}
+            className="h-9 pl-9"
+          />
+        </div>
+      )}
 
-        {showSearch && (
-          <div className="relative min-w-40 flex-1 sm:max-w-64">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
-            <Input
-              type="search"
-              aria-label="Search notes and categories"
-              placeholder="Search…"
-              value={value.q ?? ""}
-              onChange={(e) => set({ q: e.target.value || undefined })}
-              className="h-9 pl-9"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 sm:pb-0">
-        <Segmented<Kind | undefined>
-          label="Type"
-          value={value.kind}
-          onChange={(kind) => set({ kind })}
-          options={[
-            { value: undefined, label: "All" },
-            { value: "expense", label: "Expense" },
-            { value: "income", label: "Income" },
-            { value: "savings", label: "Savings" },
-          ]}
-        />
-        <Segmented<"any" | "card" | "nocard">
-          label="Credit card"
-          value={value.card === undefined ? "any" : value.card ? "card" : "nocard"}
-          onChange={(v) => set({ card: v === "any" ? undefined : v === "card" })}
-          options={[
-            { value: "any", label: "Any payment" },
-            { value: "card", label: "Card" },
-            { value: "nocard", label: "Not card" },
-          ]}
-        />
-        {showCategory && categories && (
-          <Select
-            aria-label="Category"
-            value={value.categoryId ?? ""}
-            onChange={(e) => set({ categoryId: e.target.value || undefined })}
-            className="h-9 w-auto! max-w-48 shrink-0"
-          >
-            <option value="">All categories</option>
-            {categories
-              .filter((c) => c.saved)
-              .map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            {categories.some((c) => !c.saved) && (
-              <optgroup label="One-time labels">
-                {categories
-                  .filter((c) => !c.saved)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </optgroup>
-            )}
-          </Select>
-        )}
-        {!isDefault && (
+      {value.preset === "month" && (
+        <div className="flex basis-full items-center gap-1 sm:order-2 sm:basis-auto">
           <button
             type="button"
-            onClick={() => onChange(defaults)}
-            className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-2.5 text-sm text-ink-2 hover:bg-surface-2"
+            aria-label="Previous month"
+            onClick={() => set({ month: shiftMonth(month, -1) })}
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-ink-2 hover:bg-surface-2"
           >
-            <X className="size-4" aria-hidden /> Clear
+            <ChevronLeft className="size-4" />
           </button>
-        )}
-      </div>
+          <input
+            type="month"
+            aria-label="Month"
+            value={month}
+            max={current}
+            onChange={(e) => e.target.value && set({ month: e.target.value })}
+            className="h-9 min-w-0 flex-1 rounded-lg border border-line-strong bg-surface px-2 text-sm text-ink sm:flex-none"
+          />
+          <button
+            type="button"
+            aria-label="Next month"
+            disabled={month >= current}
+            onClick={() => set({ month: shiftMonth(month, 1) })}
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-ink-2 hover:bg-surface-2 disabled:opacity-40"
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+      )}
+
+      {value.preset === "custom" && (
+        <div className="grid basis-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1 sm:order-2 sm:flex sm:basis-auto">
+          <Input
+            type="date"
+            aria-label="From date"
+            value={value.from ?? ""}
+            onChange={(e) => set({ from: e.target.value || undefined })}
+            className="h-9 min-w-0 px-2 sm:w-auto! sm:px-3"
+          />
+          <span className="text-muted">–</span>
+          <Input
+            type="date"
+            aria-label="To date"
+            value={value.to ?? ""}
+            onChange={(e) => set({ to: e.target.value || undefined })}
+            className="h-9 min-w-0 px-2 sm:w-auto! sm:px-3"
+          />
+        </div>
+      )}
+
+      {/* Toolbar break on wider screens: type / card / category / clear go on the next line. */}
+      <div aria-hidden className="hidden sm:order-3 sm:block sm:basis-full" />
+
+      <Segmented<Kind | undefined>
+        label="Type"
+        value={value.kind}
+        onChange={(kind) => set({ kind })}
+        className="basis-full sm:order-4 sm:basis-auto"
+        options={[
+          { value: undefined, label: "All" },
+          { value: "expense", label: "Expense" },
+          { value: "income", label: "Income" },
+          { value: "savings", label: "Savings" },
+        ]}
+      />
+      <Segmented<"any" | "card" | "nocard">
+        label="Credit card"
+        value={value.card === undefined ? "any" : value.card ? "card" : "nocard"}
+        onChange={(v) => set({ card: v === "any" ? undefined : v === "card" })}
+        className="min-w-0 flex-1 sm:order-5 sm:flex-none"
+        options={[
+          { value: "any", label: "Any payment" },
+          { value: "card", label: "Card" },
+          { value: "nocard", label: "Not card" },
+        ]}
+      />
+      {!isDefault && (
+        <button
+          type="button"
+          onClick={() => onChange(defaults)}
+          aria-label="Clear filters"
+          className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-sm text-ink-2 hover:bg-surface-2 sm:order-7 sm:px-2.5"
+        >
+          <X className="size-4" aria-hidden /> <span className="hidden sm:inline">Clear</span>
+        </button>
+      )}
     </div>
   );
 }
