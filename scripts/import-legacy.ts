@@ -33,6 +33,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import * as schema from "../src/db/schema";
+import { migrationDatabaseUrl, requireDatabaseUrl } from "../src/db/url";
 import { categories, transactions, users, type CategoryKind } from "../src/db/schema";
 import { isIsoDate } from "../src/lib/dates";
 import { nextSlot } from "../src/lib/palette";
@@ -166,7 +167,7 @@ async function main() {
     for (const u of unmapped) console.warn(`   "${u}" (${byUser.get(u)!.length} rows)`);
   }
 
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const pool = new Pool({ connectionString: requireDatabaseUrl(migrationDatabaseUrl(), "the import") });
   const db = drizzle(pool, { schema });
   const dryRun = args["dry-run"];
   const summary: { user: string; email: string; inserted: number; existing: number; skipped: string[] }[] = [];
