@@ -1,15 +1,14 @@
 "use client";
 
 import clsx from "clsx";
-import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { CategoryRow, MonthlyRow } from "@/server/queries";
 import { formatMonthKey } from "@/lib/dates";
 import { formatMoney } from "@/lib/format";
-import { IncomeVsSpendChart, StackedMonthlyChart } from "./charts";
-import { Card, CardHeader, CategoryDot, Input } from "./ui";
+import { IncomeVsSpendChart, CategoryLinesChart } from "./charts";
+import { Card, CardHeader } from "./ui";
 
-type Mode = "top" | "saved" | "custom";
+type Mode = "top" | "saved";
 const TOP_N = 5;
 
 /** Rounds to paise and turns -0 / float dust (e.g. -0.0000001) into a clean 0. */
@@ -36,8 +35,6 @@ export function TrendsView({
   openingBalance: number;
 }) {
   const [mode, setMode] = useState<Mode>("top");
-  const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [query, setQuery] = useState("");
   const byId = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
   // Expense totals per category over the period (for ordering and the picker).
@@ -49,12 +46,11 @@ export function TrendsView({
 
   const selected: string[] = useMemo(() => {
     if (mode === "top") return expenseTotals.slice(0, TOP_N).map(([id]) => id);
-    if (mode === "saved") return expenseTotals.filter(([id]) => byId.get(id)?.saved).map(([id]) => id);
-    return expenseTotals.filter(([id]) => picked.has(id)).map(([id]) => id);
-  }, [mode, picked, expenseTotals, byId]);
+    return expenseTotals.filter(([id]) => byId.get(id)?.saved).map(([id]) => id);
+  }, [mode, expenseTotals, byId]);
 
-  // "Top 5" and "All saved" fold the rest into one grey segment; a custom pick shows only what was picked.
-  const withOther = mode !== "custom" && expenseTotals.length > selected.length;
+  // Everything not selected is folded into one grey "Other" / "One-time labels" line.
+  const withOther = expenseTotals.length > selected.length;
   const otherLabel = mode === "saved" ? "One-time labels" : "Other";
 
   const { stacked, flow } = useMemo(() => {
@@ -100,11 +96,6 @@ export function TrendsView({
   const totalIncome = cents(flow.reduce((s, m) => s + m.income, 0));
   const activeMonths = flow.filter((m) => m.spent > 0).length || 1;
   const peak = flow.reduce((a, b) => (b.spent > a.spent ? b : a), flow[0]);
-  const pickable = expenseTotals
-    .map(([id, total]) => ({ c: byId.get(id)!, total }))
-    .filter(({ c }) => c && (!query || c.name.toLowerCase().includes(query.toLowerCase())))
-    .sort((a, b) => Number(b.c.saved) - Number(a.c.saved) || b.total - a.total);
-
   const signed = (n: number) => `${n < 0 ? "−" : ""}${formatMoney(Math.abs(n), currency)}`;
 
   return (
@@ -119,30 +110,20 @@ export function TrendsView({
       <Card>
         <CardHeader
           title="Monthly spending by category"
-          subtitle={
-            mode === "top"
-              ? `Top ${TOP_N} categories over the period`
-              : mode === "saved"
-                ? "All saved categories"
-                : `${selected.length} selected`
-          }
+          subtitle={mode === "top" ? `Top ${TOP_N} categories over the period` : "All saved categories"}
           action={
             <div role="group" aria-label="Categories to show" className="inline-flex rounded-lg border border-line-strong bg-surface p-0.5">
               {(
                 [
                   ["top", `Top ${TOP_N}`],
                   ["saved", "All saved"],
-                  ["custom", "Choose…"],
                 ] as const
               ).map(([v, label]) => (
                 <button
                   key={v}
                   type="button"
                   aria-pressed={mode === v}
-                  onClick={() => {
-                    setMode(v);
-                    if (v === "custom" && picked.size === 0) setPicked(new Set(selected));
-                  }}
+                  onClick={() => setMode(v)}
                   className={clsx(
                     "rounded-md px-2.5 py-1 text-sm whitespace-nowrap",
                     mode === v ? "bg-accent-soft font-medium text-accent" : "text-ink-2 hover:text-ink",
@@ -154,56 +135,11 @@ export function TrendsView({
             </div>
           }
         />
-        {mode === "custom" && (
-          <div className="mx-5 mb-3 rounded-xl border border-line">
-            <div className="flex flex-wrap items-center gap-2 border-b border-line px-3 py-2">
-              <div className="relative min-w-40 flex-1">
-                <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted" aria-hidden />
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Find a category…"
-                  aria-label="Find a category"
-                  className="h-8 pl-8"
-                />
-              </div>
-              <button type="button" className="text-xs font-medium text-accent hover:underline" onClick={() => setPicked(new Set(expenseTotals.filter(([id]) => byId.get(id)?.saved).map(([id]) => id)))}>
-                All saved
-              </button>
-              <button type="button" className="text-xs font-medium text-ink-2 hover:underline" onClick={() => setPicked(new Set())}>
-                None
-              </button>
-            </div>
-            <ul className="grid max-h-56 grid-cols-1 gap-x-4 overflow-auto px-3 py-2 sm:grid-cols-2 lg:grid-cols-3">
-              {pickable.map(({ c, total }) => (
-                <li key={c.id}>
-                  <label className="flex cursor-pointer items-center gap-2 rounded-md px-1 py-1 text-sm hover:bg-surface-2">
-                    <input
-                      type="checkbox"
-                      checked={picked.has(c.id)}
-                      onChange={(e) => {
-                        const next = new Set(picked);
-                        if (e.target.checked) next.add(c.id);
-                        else next.delete(c.id);
-                        setPicked(next);
-                      }}
-                      className="size-4 accent-[var(--accent)]"
-                    />
-                    <CategoryDot color={c.color} />
-                    <span className="min-w-0 flex-1 truncate text-ink">{c.name}</span>
-                    {!c.saved && <span className="text-[10px] text-muted uppercase">once</span>}
-                    <span className="tabular text-xs text-muted">{formatMoney(total, currency)}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
         <div className="px-3 pb-4 md:px-5">
           {series.length ? (
-            <StackedMonthlyChart data={stacked} series={series} currency={currency} />
+            <CategoryLinesChart data={stacked} series={series} currency={currency} />
           ) : (
-            <p className="py-16 text-center text-sm text-muted">Pick one or more categories above.</p>
+            <p className="py-16 text-center text-sm text-muted">No spending in this period.</p>
           )}
         </div>
       </Card>

@@ -2,6 +2,7 @@
 
 import { Check, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useActionState, useCallback, useId, useState, useTransition } from "react";
+import { clearFilterQuery } from "@/lib/book-switch";
 import { deleteBook, saveBook, switchBook, type ActionState } from "@/server/actions";
 import type { BookRef } from "@/server/dal";
 import { Modal } from "./modal";
@@ -45,6 +46,7 @@ export function BookManager({ books, activeId }: { books: BookRef[]; activeId: s
                 disabled={pending}
                 onClick={() =>
                   start(async () => {
+                    clearFilterQuery();
                     const res = await switchBook(b.id);
                     toast(res.message ?? "Switched", res.ok ? "success" : "error");
                   })

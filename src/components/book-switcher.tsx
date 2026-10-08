@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { BookOpen, Check, ChevronsUpDown, Loader2, Settings2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { clearFilterQuery } from "@/lib/book-switch";
 import { switchBook } from "@/server/actions";
 import type { BookRef } from "@/server/dal";
 import { toast } from "./toast";
@@ -70,7 +71,8 @@ export function BookSwitcher({ books, active, compact = false }: { books: BookRe
                 setOpen(false);
                 if (b.id === active.id) return;
                 start(async () => {
-                  const res = await switchBook(b.id);
+                  clearFilterQuery();
+                    const res = await switchBook(b.id);
                   if (!res.ok) toast(res.message ?? "Couldn't switch", "error");
                 });
               }}
