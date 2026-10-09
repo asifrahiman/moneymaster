@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { PwaInit } from "@/components/pwa-init";
 import { themeScript } from "@/components/theme";
 import { Toaster } from "@/components/toast";
 import "./globals.css";
@@ -6,6 +7,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "MoneyMaster", template: "%s · MoneyMaster" },
   description: "Track spending, income and savings.",
+  applicationName: "MoneyMaster",
+  // iOS "Add to Home Screen" (Android uses the manifest in app/manifest.ts).
+  appleWebApp: { capable: true, title: "MoneyMaster", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -24,6 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-dvh">
         {children}
         <Toaster />
+        <PwaInit />
       </body>
     </html>
   );

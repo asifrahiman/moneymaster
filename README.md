@@ -185,3 +185,14 @@ tests/
 - All SQL is parameterised by Drizzle. Inputs are validated on the server with zod and the date and amount parsers.
 - Secrets live only in environment variables, and `.env*` is git-ignored.
 - The CSV export guards against spreadsheet formula injection.
+
+## Install on your phone
+
+MoneyMaster is an installable web app (PWA). On Android, open the site in Chrome, sign in, then tap your
+profile picture → **Install app** (or Chrome's ⋮ menu → **Install app** / **Add to Home screen**). It gets a
+home-screen icon and opens full screen without the browser bar. On iPhone use Safari → Share → **Add to Home
+Screen**. Updates to the site show up in the app automatically.
+
+How it works: `src/app/manifest.ts` (name, icons, colours), `public/sw.js` (a small service worker that caches
+build assets for fast start-up and shows `public/offline.html` when there's no connection; your data is
+always loaded live), and `src/lib/pwa.ts` (registers the worker and powers the "Install app" menu item).

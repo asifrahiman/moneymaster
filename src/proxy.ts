@@ -7,6 +7,8 @@ const { auth } = NextAuth(authConfig);
 // Every page and server action still verifies the session itself (src/server/dal.ts).
 export default auth;
 
+// Public files the browser fetches without a session (icons, the install manifest,
+// the service worker and its offline page) are excluded.
 export const config = {
-  matcher: ["/((?!api/auth|login|_next/static|_next/image|favicon.ico|icon.svg).*)"],
+  matcher: ["/((?!api/auth|login|_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|manifest.webmanifest|sw.js|offline.html|icons/).*)"],
 };

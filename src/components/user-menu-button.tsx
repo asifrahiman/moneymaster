@@ -1,9 +1,10 @@
 "use client";
 
 import clsx from "clsx";
-import { ChevronsUpDown, LogOut, Settings } from "lucide-react";
+import { ChevronsUpDown, Download, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { canInstall, promptInstall, subscribeInstall } from "@/lib/pwa";
 import { signOutAction } from "@/server/actions";
 
 function Avatar({ name, image }: { name: string; image: string | null }) {
@@ -32,6 +33,8 @@ export function UserMenuButton({
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // "Install app" appears only when Chrome says the app can be installed (not when already installed).
+  const installable = useSyncExternalStore(subscribeInstall, canInstall, () => false);
 
   useEffect(() => {
     if (!open) return;
@@ -84,6 +87,19 @@ export function UserMenuButton({
           <Link href="/settings" role="menuitem" onClick={() => setOpen(false)} className={clsx(item, "mt-1")}>
             <Settings className="size-4" aria-hidden /> Settings
           </Link>
+          {installable && (
+            <button
+              type="button"
+              role="menuitem"
+              className={item}
+              onClick={() => {
+                setOpen(false);
+                void promptInstall();
+              }}
+            >
+              <Download className="size-4" aria-hidden /> Install app
+            </button>
+          )}
           <form action={signOutAction}>
             <button type="submit" role="menuitem" className={item}>
               <LogOut className="size-4" aria-hidden /> Sign out
