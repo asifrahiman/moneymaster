@@ -38,4 +38,11 @@ describe("parseAmount", () => {
     expect(isFormula("1,250")).toBe(false);
     expect(isFormula("-5")).toBe(false);
   });
+
+  it("accepts the symbols the amount keypad buttons and phone keyboards type", () => {
+    expect(parseAmount("120×2")).toEqual({ ok: true, value: 240 });
+    expect(parseAmount("90÷3")).toEqual({ ok: true, value: 30 });
+    expect(parseAmount("500−20")).toEqual({ ok: true, value: 480 });
+    expect(isFormula("500−20")).toBe(true);
+  });
 });

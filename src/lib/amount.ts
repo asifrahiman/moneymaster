@@ -11,7 +11,12 @@ export type AmountResult = { ok: true; value: number } | { ok: false; error: str
 export const MAX_AMOUNT = 9_999_999_999.99; // fits numeric(12,2)
 
 export function parseAmount(input: string): AmountResult {
-  const src = input.replace(/[,\s₹$€£]/g, "").replace(/^=/, "");
+  const src = input
+    .replace(/[,\s₹$€£]/g, "")
+    .replace(/[×xX]/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/[−–]/g, "-") // typographic minus / en dash from some keyboards
+    .replace(/^=/, "");
   if (src === "") return { ok: false, error: "Enter an amount" };
 
   let pos = 0;
@@ -74,5 +79,5 @@ export function parseAmount(input: string): AmountResult {
 
 /** True when the input is a formula rather than a plain number (used to show a preview). */
 export function isFormula(input: string): boolean {
-  return /^=|.\s*[-+*/x(]/.test(input.trim());
+  return /^=|.\s*[-+*/x×÷−(]/.test(input.trim());
 }

@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { flushSync } from "react-dom";
 import { startTransition, useActionState, useId, useRef, useState } from "react";
 import { saveTransaction, type ActionState } from "@/server/actions";
 import type { CategoryRow, TxRow } from "@/server/queries";
@@ -97,23 +98,39 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
               <span className="text-negative">{preview.error}</span>
             )
           ) : (
-            "Tip: you can type a sum like 120+80"
+            "Tip: use + − × ÷ for a sum, like 120+80"
           )
         }
       >
-        <Input
-          ref={amountRef}
-          id={id("amount")}
-          name="amount"
-          inputMode="decimal"
-          autoComplete="off"
-          placeholder="0.00"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          aria-invalid={!!err?.amount}
-          className="tabular"
-          required
-        />
+        <div className="relative">
+          <Input
+            ref={amountRef}
+            id={id("amount")}
+            name="amount"
+            // Number pad on phones; the buttons below add the operators it lacks.
+            inputMode="decimal"
+            enterKeyHint="done"
+            autoComplete="off"
+            placeholder="0.00"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            aria-invalid={!!err?.amount}
+            className="tabular pr-[8.5rem]"
+            required
+          />
+          <OperatorKeys
+            onInsert={(op) => {
+              const el = amountRef.current;
+              const start = el?.selectionStart ?? amount.length;
+              const end = el?.selectionEnd ?? amount.length;
+              const next = amount.slice(0, start) + op + amount.slice(end);
+              // Commit the new value synchronously, then put the cursor right after the symbol.
+              flushSync(() => setAmount(next));
+              el?.focus();
+              el?.setSelectionRange(start + op.length, start + op.length);
+            }}
+          />
+        </div>
       </Field>
 
       {(isNew || (match && !match.saved)) && (
@@ -194,5 +211,37 @@ export function TransactionForm({ categories, today, currency, transaction, onDo
         </Button>
       </div>
     </form>
+  );
+}
+
+const OPERATORS = [
+  { label: "+", insert: "+", name: "plus" },
+  { label: "−", insert: "-", name: "minus" },
+  { label: "×", insert: "*", name: "times" },
+  { label: "÷", insert: "/", name: "divided by" },
+] as const;
+
+/**
+ * + − × ÷ inside the amount box. Phone number pads don't have these keys, and a
+ * full keyboard is slower for numbers. `onPointerDown` + preventDefault keeps the
+ * focus (and the on-screen keyboard) on the amount field while tapping them.
+ */
+function OperatorKeys({ onInsert }: { onInsert: (op: string) => void }) {
+  return (
+    <div className="absolute inset-y-0 right-1 flex items-center gap-0.5" role="group" aria-label="Insert operator">
+      {OPERATORS.map((o) => (
+        <button
+          key={o.name}
+          type="button"
+          tabIndex={-1}
+          aria-label={`Insert ${o.name}`}
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => onInsert(o.insert)}
+          className="flex size-7 items-center justify-center rounded-md bg-surface-2 text-base leading-none font-medium text-ink-2 hover:bg-line hover:text-ink active:bg-accent-soft active:text-accent"
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
   );
 }
