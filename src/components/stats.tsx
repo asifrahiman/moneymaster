@@ -62,11 +62,19 @@ export function StatGrid({
       emphasis={bank < 0 ? "text-negative" : "text-ink"}
       sub={
         <>
-          <span className="block" title="Income − spent − saved, including credit card spends">
-            With card spends:{" "}
-            <span className={`tabular font-medium ${afterCard < 0 ? "text-negative" : "text-ink"}`}>{signed(afterCard)}</span>
-          </span>
-          {since && <span className="mt-0.5 block text-muted">Since {formatDate(since)}</span>}
+          {totals.card > 0 ? (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+              <dt className="whitespace-nowrap">On card</dt>
+              <dd className="tabular text-right font-medium text-ink">{signed(clean(totals.card))}</dd>
+              <dt className="whitespace-nowrap">After card</dt>
+              <dd className={`tabular text-right font-medium ${afterCard < 0 ? "text-negative" : "text-ink"}`}>
+                {signed(afterCard)}
+              </dd>
+            </dl>
+          ) : (
+            <span className="block">Income − spent − saved</span>
+          )}
+          {since && <span className="mt-1 block text-muted">Since {formatDate(since)}</span>}
         </>
       }
     />
